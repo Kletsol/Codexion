@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/28 14:45:04 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/28 15:37:15 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ typedef struct s_coder
 	t_dongle		*right_dongle;
 	uint64_t		last_compile_start;
 	int				nb_compiles;
-	t_dongle		state_mutex;
+	pthread_mutex_t	state_mutex;
 	t_sim			*sim;
 }	t_coder;
 
@@ -76,5 +76,6 @@ bool		parser(char **av, t_sim *simulation);
 bool		init_coders(t_sim *sim);
 static void	destroy_dongles_mutexes(t_dongle *dongles, int count);
 void		print_dongles(t_sim *sim);
+uint64_t	get_time_ms(void);
 
 #endif
