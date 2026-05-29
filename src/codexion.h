@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/28 15:37:15 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 11:00:26 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,19 +23,37 @@
 # include <unistd.h>
 # include <sys/time.h>
 
+# define ERROR_MISSING_ARG "Invalid number of arguments\n"
+# define ERROR_NOT_POS_INT "Argument must be a positive int\n"
+# define ERROR_OVERFLOW "Argument invalid, may cause integer overflow\n"
+# define ERROR_NB_CODERS "Number of coders must be greater than 0\n"
+# define ERROR_NB_COMPILES "Number of compiles must be greater than 0\n"
+# define ERROR_POLICY "The chosen scheduler must be exactly fifo or edf\n"
+
+typedef struct s_sim	t_sim;
+
 typedef enum e_scheduler_type
 {
 	FIFO = 0,
 	EDF = 1
 }	t_enum_sched;
 
-typedef struct s_sim	t_sim;
+typedef struct s_heap
+{
+	int			coder_id;
+	uint64_t	request_time;
+	uint64_t	deadline;
+}	t_heap;
 
 typedef struct s_dongle
 {
 	pthread_mutex_t	mutex;
+	pthread_cond_t	cond;
 	int				id;
+	bool			used;
 	uint64_t		available_at;
+	t_heap			*queue;
+	int				queue_size;
 }	t_dongle;
 
 typedef struct s_coder
@@ -77,5 +95,6 @@ bool		init_coders(t_sim *sim);
 static void	destroy_dongles_mutexes(t_dongle *dongles, int count);
 void		print_dongles(t_sim *sim);
 uint64_t	get_time_ms(void);
+bool		print_error(char *str);
 
 #endif

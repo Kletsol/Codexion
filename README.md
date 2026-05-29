@@ -119,7 +119,7 @@ typedef struct s_coder
 	t_dongle		*right_dongle;
 	uint64_t		last_compile_start;
 	int				nb_compiles;
-	t_dongle		state_mutex;
+	pthread_mutex_t	state_mutex;
 	t_sim			*sim;
 }	t_coder;
 

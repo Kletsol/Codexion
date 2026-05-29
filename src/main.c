@@ -6,13 +6,13 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/27 14:25:35 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 10:59:41 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-void simulation(t_sim *sim)
+void	simulation(t_sim *sim)
 {
 	int	i;
 
@@ -29,14 +29,11 @@ int	main(int ac, char **av)
 
 	if (ac != 9)
 	{
-		printf("%s", "[ERROR]\n");
+		print_error(ERROR_MISSING_ARG);
 		return (1);
 	}
 	if (!parser(av, &simulation))
-	{
-		printf("%s", "[ERROR]\n");
 		return (1);
-	}
 	else
 	{
 		init_coders(&simulation);

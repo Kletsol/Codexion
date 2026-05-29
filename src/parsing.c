@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/27 10:51:17 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 10:47:38 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ bool	valid_number(void *dest, char *str, size_t size)
 
 	error = false;
 	if (!ft_striter(str, ft_isdigit))
-		return (false);
+		return (print_error(ERROR_NOT_POS_INT));
 	if (size == sizeof(int))
 	{
 		int_dest = (int *)dest;
@@ -55,7 +55,7 @@ bool	valid_number(void *dest, char *str, size_t size)
 		*uint64_dest = ft_atou(str, &error);
 	}
 	if (error == true)
-		return (false);
+		return (print_error(ERROR_OVERFLOW));
 	return (true);
 }
 
@@ -66,7 +66,7 @@ bool	valid_policy(char *str, t_sim *simulation)
 	else if (!strcmp(str, "fifo"))
 		simulation->policy = FIFO;
 	else
-		return (false);
+		return (print_error(ERROR_POLICY));
 	return (true);
 }
 
@@ -82,8 +82,8 @@ bool	parser(char **av, t_sim *simulation)
 		||!valid_policy(av[8], simulation))
 		return (false);
 	if (simulation->nb_coders <= 0)
-		return (false);
+		return (print_error(ERROR_NB_CODERS));
 	if (simulation->nb_compiles <= 0)
-		return (false);
+		return (print_error(ERROR_NB_COMPILES));
 	return (true);
 }

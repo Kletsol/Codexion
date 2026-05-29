@@ -1,25 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   cleanup.c                                          :+:      :+:    :+:   */
+/*   error.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 10:16:11 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 10:49:50 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-static void	destroy_dongles_mutexes(t_dongle *dongles, int count)
+bool	print_error(char *str)
 {
-	int	i;
-
-	i = 0;
-	while (i < count)
-	{
-		pthread_mutex_destroy(&dongles[i].mutex);
-		i++;
-	}
+	fprintf(stderr, "[ERROR]: %s", str);
+	return (false);
 }
