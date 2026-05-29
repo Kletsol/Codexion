@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/28 15:09:20 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 11:53:04 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,5 +40,18 @@ uint64_t	get_time_ms(void)
 	struct timeval	tv;
 
 	gettimeofday(&tv, NULL);
-	return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+	return ((unint64_t)tv.tv_sec * 1000 + (unint64_t)tv.tv_usec / 1000);
+}
+
+void	smart_sleep(uint64_t duration, t_sim *sim)
+{
+	uint64_t	start;
+
+	start = get_time_ms();
+	while (!simulation_stopped(sim))
+	{
+		if (get_time_ms() - start >= duration)
+			break ;
+		usleep(100);
+	}
 }

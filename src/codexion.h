@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 11:00:26 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 15:02:03 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,15 @@ typedef enum e_scheduler_type
 	EDF = 1
 }	t_enum_sched;
 
+typedef enum e_state
+{
+	WAITING,
+	COMPILING,
+	DEBUGGING,
+	REFACTORING,
+	BURNED_OUT
+}	t_state;
+
 typedef struct s_heap
 {
 	int			coder_id;
@@ -50,7 +59,7 @@ typedef struct s_dongle
 	pthread_mutex_t	mutex;
 	pthread_cond_t	cond;
 	int				id;
-	bool			used;
+	bool			available;
 	uint64_t		available_at;
 	t_heap			*queue;
 	int				queue_size;
@@ -92,9 +101,15 @@ void		ft_bzero(void *s, size_t n);
 void		*ft_calloc(size_t nmemb, size_t size);
 bool		parser(char **av, t_sim *simulation);
 bool		init_coders(t_sim *sim);
-static void	destroy_dongles_mutexes(t_dongle *dongles, int count);
+bool		init_dongles(t_sim *sim);
+void		destroy_dongles_mutexes(t_dongle *dongles, int count);
 void		print_dongles(t_sim *sim);
+void		set_stop(t_sim *sim, bool value);
 uint64_t	get_time_ms(void);
+void		smart_sleep(uint64_t duration, t_sim *sim);
 bool		print_error(char *str);
+bool		simulation_stopped(t_sim *sim);
+uint64_t	elapsed_time(t_sim *sim);
+void		print_status(t_coder *coder, char *str);
 
 #endif

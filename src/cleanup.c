@@ -6,20 +6,56 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 10:16:11 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/29 16:01:15 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-static void	destroy_dongles_mutexes(t_dongle *dongles, int count)
+void	destroy_dongles(t_sim *sim, int count)
 {
 	int	i;
 
+	if (!sim->dongles)
+		return ;
 	i = 0;
 	while (i < count)
 	{
-		pthread_mutex_destroy(&dongles[i].mutex);
+		pthread_mutex_destroy(&sim->dongles[i].mutex);
+		pthread_cond_destroy(&sim->dongles[i].cond);
 		i++;
 	}
+	free (sim->dongles);
+	sim->dongles = NULL;
+}
+
+void	destroy_coders(t_sim *sim, int count)
+{
+	int	i;
+
+	if (!sim->coders)
+		return ;
+	i = 0;
+	while (i < count)
+	{
+		pthread_mutex_destroy(&sim->coders[i].state_mutex);
+		i++;
+	}
+	free (sim->coders);
+	sim->coders = NULL;
+}
+
+void	destroy_global_mutexes(t_sim *sim)
+{
+	pthread_mutex_destroy(&sim->stop_mutex);
+	pthread_mutex_destroy(&sim->print_mutex);
+}
+
+void	destroy_simulation(t_sim *sim)
+{
+	if (sim->dongles)
+		destroy_dongles(sim, sim->nb_coders);
+	if (sim->coders)
+		destroy_coders(sim, sim->nb_coders);
+	destroy_global_mutexes(sim);
 }
