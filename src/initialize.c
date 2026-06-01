@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 16:18:11 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:21:06 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,9 +82,9 @@ bool	init_simulation(t_sim *sim)
 		destroy_global_mutexes(sim);
 		return (false);
 	}
-	if (!init_coders)
+	if (!init_coders(sim))
 	{
-		destroy_dongles(sim, sin->nb_coders);
+		destroy_dongles(sim, sim->nb_coders);
 		destroy_global_mutexes(sim);
 		return (false);
 	}

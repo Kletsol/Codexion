@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 15:02:03 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:53:21 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,12 +47,12 @@ typedef enum e_state
 	BURNED_OUT
 }	t_state;
 
-typedef struct s_heap
+typedef struct s_request
 {
 	int			coder_id;
 	uint64_t	request_time;
 	uint64_t	deadline;
-}	t_heap;
+}	t_request;
 
 typedef struct s_dongle
 {
@@ -61,7 +61,7 @@ typedef struct s_dongle
 	int				id;
 	bool			available;
 	uint64_t		available_at;
-	t_heap			*queue;
+	t_request		*queue;
 	int				queue_size;
 }	t_dongle;
 
@@ -75,6 +75,7 @@ typedef struct s_coder
 	int				nb_compiles;
 	pthread_mutex_t	state_mutex;
 	t_sim			*sim;
+	t_state			state;
 }	t_coder;
 
 typedef struct s_sim
@@ -102,7 +103,10 @@ void		*ft_calloc(size_t nmemb, size_t size);
 bool		parser(char **av, t_sim *simulation);
 bool		init_coders(t_sim *sim);
 bool		init_dongles(t_sim *sim);
-void		destroy_dongles_mutexes(t_dongle *dongles, int count);
+bool		init_simulation(t_sim *sim);
+void		destroy_dongles(t_sim *sim, int count);
+void		destroy_coders(t_sim *sim, int count);
+void		destroy_global_mutexes(t_sim *sim);
 void		print_dongles(t_sim *sim);
 void		set_stop(t_sim *sim, bool value);
 uint64_t	get_time_ms(void);

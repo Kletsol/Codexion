@@ -6,22 +6,22 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 10:59:41 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:31:59 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-void	simulation(t_sim *sim)
-{
-	int	i;
+// void	simulation(t_sim *sim)
+// {
+// 	int	i;
 
-	i = 0;
-	while (i < sim->nb_coders)
-	{
-		pthread_create(sim->list_coders[i]);
-	}
-}
+// 	i = 0;
+// 	while (i < sim->nb_coders)
+// 	{
+// 		pthread_create(sim->coders[i]);
+// 	}
+// }
 
 int	main(int ac, char **av)
 {

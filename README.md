@@ -111,6 +111,15 @@ typedef enum e_scheduler_type
 	EDF = 1
 }	t_enum_sched;
 
+typedef enum e_state
+{
+	WAITING,
+	COMPILING,
+	DEBUGGING,
+	REFACTORING,
+	BURNED_OUT
+}	t_state;
+
 typedef struct s_heap
 {
 	int			coder_id;
@@ -165,7 +174,11 @@ void		ft_bzero(void *s, size_t n);
 void		*ft_calloc(size_t nmemb, size_t size);
 bool		parser(char **av, t_sim *simulation);
 bool		init_coders(t_sim *sim);
-static void	destroy_dongles_mutexes(t_dongle *dongles, int count);
+bool		init_dongles(t_sim *sim);
+bool		init_simulation(t_sim *sim);
+void		destroy_dongles(t_sim *sim, int count);
+void		destroy_coders(t_sim *sim, int count);
+void		destroy_global_mutexes(t_sim *sim);
 void		print_dongles(t_sim *sim);
 void		set_stop(t_sim *sim, bool value);
 uint64_t	get_time_ms(void);

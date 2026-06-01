@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 11:53:04 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/01 17:01:59 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ uint64_t	get_time_ms(void)
 	struct timeval	tv;
 
 	gettimeofday(&tv, NULL);
-	return ((unint64_t)tv.tv_sec * 1000 + (unint64_t)tv.tv_usec / 1000);
+	return ((uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000);
 }
 
 void	smart_sleep(uint64_t duration, t_sim *sim)
