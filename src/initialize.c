@@ -6,11 +6,21 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/01 14:21:06 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/05 09:53:52 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
+
+bool	init_heap(t_dongle *dongle, t_sim *sim)
+{
+	dongle->waiters.capacity = sim->nb_coders;
+	dongle->waiters.size = 0;
+	dongle->waiters.data = ft_calloc(sim->nb_coders, sizeof(t_request));
+	if (!dongle->waiters.data)
+		return (false);
+	return (true);
+}
 
 bool	init_dongles(t_sim *sim)
 {
@@ -19,13 +29,14 @@ bool	init_dongles(t_sim *sim)
 	sim->dongles = ft_calloc(sim->nb_coders, sizeof(t_dongle));
 	if (!sim->dongles)
 		return (false);
-	i = 0;
-	while (i < sim->nb_coders)
+	i = -1;
+	while (++i < sim->nb_coders)
 	{
 		sim->dongles[i].id = i;
 		sim->dongles[i].available = true;
 		sim->dongles[i].available_at = 0;
-		if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
+		if ((!init_heap(&sim->dongles[i], sim))
+			|| pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
 		{
 			destroy_dongles(sim, i);
 			return (false);
@@ -36,7 +47,7 @@ bool	init_dongles(t_sim *sim)
 			destroy_dongles(sim, i);
 			return (false);
 		}
-		i++;
+		printf("Dongle %d initialized\n", sim->dongles[i].id);
 	}
 	return (true);
 }
@@ -61,6 +72,7 @@ bool	init_coders(t_sim *sim)
 			destroy_coders(sim, i);
 			return (false);
 		}
+		printf("Coder %d initialized\n", sim->coders[i].id);
 		i++;
 	}
 	return (true);
