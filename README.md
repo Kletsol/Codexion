@@ -133,7 +133,7 @@ dard library priority queue may be used).
 '
 J'ai aussi redige le fichier .h, qui ressemble pour le moment a ceci:
 '
-#ifndef CODEXION_H
+ifndef CODEXION_H
 # define CODEXION_H
 
 # include <stdlib.h>
@@ -245,6 +245,14 @@ bool		init_coders(t_sim *sim);
 bool		init_dongles(t_sim *sim);
 bool		init_simulation(t_sim *sim);
 
+// coders
+void		*coder_routine(void *arg);
+bool		start_coders(t_sim *sim);
+void		wait_threads(t_sim *sim);
+
+// dongles
+void		release_dongles(t_coder *coder, t_dongle *dongle);
+
 // cleanup
 void		destroy_dongles(t_sim *sim, int count);
 void		destroy_coders(t_sim *sim, int count);
@@ -256,6 +264,7 @@ void		print_dongles(t_sim *sim);
 
 // setters
 void		set_stop(t_sim *sim, bool value);
+void		set_state(t_coder *coder, t_state state);
 
 // errors
 bool		print_error(char *str);
@@ -273,7 +282,7 @@ bool		check_completion(t_sim *sim);
 void		*monitor_routine(void *arg);
 
 // heap
-static void	swap(t_request *a, t_request *b);
+// static void	swap(t_request *a, t_request *b);
 bool		request_priority(t_request *a, t_request *b, t_enum_sched policy);
 bool		heap_push(t_heap *heap, t_request request, t_enum_sched policy);
 t_request	heap_pop(t_heap *heap, t_enum_sched policy);
@@ -287,20 +296,23 @@ J'ai egalement :
 '
 int	main(int ac, char **av)
 {
-	t_sim	simulation;
+	t_sim	sim;
 
 	if (ac != 9)
 	{
 		print_error(ERROR_MISSING_ARG);
 		return (1);
 	}
-	else if (!parser(av, &simulation))
+	else if (!parser(av, &sim))
 		return (1);
 	else
 	{
 		printf("%s", "[Parsing succeeded !]\n\n");
-		init_simulation(&simulation);
-		destroy_simulation(&simulation);
+		init_simulation(&sim);
+		start_coders(&sim);
+		pthread_create(&sim.monitor, NULL, monitor_routine, &sim);
+		wait_threads(&sim);
+		destroy_simulation(&sim);
 		return (0);
 	}
 }
@@ -341,7 +353,6 @@ bool	init_dongles(t_sim *sim)
 			destroy_dongles(sim, i);
 			return (false);
 		}
-		printf("Dongle %d initialized\n", sim->dongles[i].id);
 	}
 	return (true);
 }
@@ -366,7 +377,6 @@ bool	init_coders(t_sim *sim)
 			destroy_coders(sim, i);
 			return (false);
 		}
-		printf("Coder %d initialized\n", sim->coders[i].id);
 		i++;
 	}
 	return (true);
@@ -520,11 +530,11 @@ t_request	heap_pop(t_heap *heap, t_enum_sched policy)
 {
 	t_request	node;
 	int			i;
-	t_request	smallest;
+	int			smallest;
 
 	i = 0;
 	if (heap->size == 0)
-		return ({0});
+		return ((t_request){0});
 	node = heap->data[0];
 	heap->data[0] = heap->data[heap->size - 1];
 	heap->size--;
@@ -552,3 +562,5 @@ t_request	*heap_peek(t_heap *heap)
 	return (&heap->data[0]);
 }
 '
+J'ai pu tester le tout (avec le main ecrit plus haut), ave Valgrind et Helgrind :
+Pas de leaks ni de datarace.

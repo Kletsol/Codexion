@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/05 09:53:52 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/05 12:10:21 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,6 @@ bool	init_dongles(t_sim *sim)
 			destroy_dongles(sim, i);
 			return (false);
 		}
-		printf("Dongle %d initialized\n", sim->dongles[i].id);
 	}
 	return (true);
 }
@@ -72,7 +71,6 @@ bool	init_coders(t_sim *sim)
 			destroy_coders(sim, i);
 			return (false);
 		}
-		printf("Coder %d initialized\n", sim->coders[i].id);
 		i++;
 	}
 	return (true);

@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/05 10:45:33 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/05 11:31:49 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,8 +21,15 @@ void	*coder_routine(void *arg)
 	coder = (t_coder *)arg;
 	while (!simulation_stopped(coder->sim))
 	{
+		set_state(coder, COMPILING);
+		print_status(coder, "is compiling");
+		smart_sleep(coder->sim->time_to_compile, coder->sim);
+		set_state(coder, DEBUGGING);
+		smart_sleep(coder->sim->time_to_debug, coder->sim);
 		print_status(coder, "is debugging");
+		set_state(coder, REFACTORING);
 		print_status(coder, "is refactoring");
+		smart_sleep(coder->sim->time_to_refactor, coder->sim);
 	}
 	return (NULL);
 }

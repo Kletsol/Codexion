@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/05 10:57:02 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/05 15:13:07 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@
 # define ERROR_POLICY "The chosen scheduler must be exactly fifo or edf\n"
 
 typedef struct s_sim	t_sim;
+typedef struct s_coder	t_coder;
 
 typedef enum e_scheduler_type
 {
@@ -49,7 +50,7 @@ typedef enum e_state
 
 typedef struct s_request
 {
-	int			coder_id;
+	t_coder		*coder;
 	uint64_t	request_time;
 	uint64_t	deadline;
 	uint64_t	seq;
@@ -66,6 +67,7 @@ typedef struct s_dongle
 {
 	pthread_mutex_t	mutex;
 	pthread_cond_t	cond;
+	t_coder			*owner;
 	int				id;
 	bool			available;
 	uint64_t		available_at;
@@ -127,6 +129,9 @@ void		*coder_routine(void *arg);
 bool		start_coders(t_sim *sim);
 void		wait_threads(t_sim *sim);
 
+// dongles
+void		release_dongles(t_coder *coder, t_dongle *dongle);
+
 // cleanup
 void		destroy_dongles(t_sim *sim, int count);
 void		destroy_coders(t_sim *sim, int count);
@@ -138,6 +143,7 @@ void		print_dongles(t_sim *sim);
 
 // setters
 void		set_stop(t_sim *sim, bool value);
+void		set_state(t_coder *coder, t_state state);
 
 // errors
 bool		print_error(char *str);
