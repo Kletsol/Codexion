@@ -6,7 +6,7 @@
 #    By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/05 16:12:56 by lbonnet           #+#    #+#              #
-#    Updated: 2026/06/05 10:51:58 by lbonnet          ###   ########.fr        #
+#    Updated: 2026/06/06 11:34:14 by lbonnet          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -31,6 +31,7 @@ C_FILES=src/main.c\
 		src/heap.c\
 		src/monitor.c\
 		src/coders.c\
+		src/dongles.c
 
 all: $(NAME)
 

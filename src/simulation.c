@@ -6,18 +6,23 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/05/29 11:58:25 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/10 15:03:47 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-bool	simulation_stopped(t_sim *sim)
+void	simulation(t_sim *sim)
 {
-	bool	stop;
+	int	i;
 
-	pthread_mutex_lock(&sim->stop_mutex);
-	stop = sim->stop;
-	pthread_mutex_unlock(&sim->stop_mutex);
-	return (stop);
+	i = 0;
+	sim->start_time = get_time_ms();
+	pthread_create(&sim->monitor, NULL, monitor_routine, sim);
+	while (i < sim->nb_coders)
+	{
+		pthread_create(&sim->coders[i].cod_thread, NULL,
+			coder_routine, &sim->coders[i]);
+		i++;
+	}
 }

@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/01 17:01:59 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/10 15:39:53 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,15 +43,27 @@ uint64_t	get_time_ms(void)
 	return ((uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000);
 }
 
-void	smart_sleep(uint64_t duration, t_sim *sim)
+void	smart_sleep(uint64_t duration)
 {
 	uint64_t	start;
+	uint64_t	time;
 
 	start = get_time_ms();
-	while (!simulation_stopped(sim))
+	time = start;
+	while (time - start < duration)
 	{
-		if (get_time_ms() - start >= duration)
-			break ;
 		usleep(100);
+		time = get_time_ms();
 	}
 }
+
+// uint64_t	get_next_seq(t_sim *sim)
+// {
+// 	uint64_t	seq;
+
+// 	seq = 0;
+// 	pthread_mutex_lock(&sim->seq_mutex);
+// 	seq = sim->next_seq++;
+// 	pthread_mutex_unlock(&sim->seq_mutex);
+// 	return (seq);
+// }

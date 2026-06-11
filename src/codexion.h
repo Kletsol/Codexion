@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/05 15:13:07 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/11 11:35:58 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,17 +48,24 @@ typedef enum e_state
 	BURNED_OUT
 }	t_state;
 
+typedef struct s_to_clean
+{
+	bool	print_mutex;
+	bool	sim_mutex;
+	bool	stop_mutex;
+	int		dongles_mutex;
+	int		dongles_cond;
+}	t_to_clean;
+
 typedef struct s_request
 {
-	t_coder		*coder;
-	uint64_t	request_time;
-	uint64_t	deadline;
-	uint64_t	seq;
+	int			coder_id;
+	uint64_t	schedule;
 }	t_request;
 
 typedef struct s_heap
 {
-	t_request	*data;
+	t_request	data[2];
 	int			size;
 	int			capacity;
 }	t_heap;
@@ -67,24 +74,22 @@ typedef struct s_dongle
 {
 	pthread_mutex_t	mutex;
 	pthread_cond_t	cond;
-	t_coder			*owner;
-	int				id;
 	bool			available;
-	uint64_t		available_at;
+	uint64_t		end_cooldown;
 	t_heap			waiters;
 }	t_dongle;
 
 typedef struct s_coder
 {
 	int				id;
-	pthread_t		thread;
+	pthread_t		cod_thread;
+	pthread_mutex_t	cod_mutex;
 	t_dongle		*left_dongle;
 	t_dongle		*right_dongle;
-	pthread_mutex_t	state_mutex;
 	t_sim			*sim;
-	t_state			state;
-	uint64_t		last_compile_start;
+	uint64_t		compile_start;
 	int				nb_compiles;
+	uint64_t		deadline;
 }	t_coder;
 
 typedef struct s_sim
@@ -99,17 +104,21 @@ typedef struct s_sim
 	t_enum_sched	policy;
 	bool			stop;
 	uint64_t		start_time;
+	pthread_mutex_t	sim_mutex;
 	pthread_mutex_t	stop_mutex;
 	pthread_mutex_t	print_mutex;
 	pthread_t		monitor;
 	t_coder			*coders;
 	t_dongle		*dongles;
+	int				finished_coders;
+	t_to_clean		cleanup;
 }	t_sim;
 
 // utils
 uint64_t	ft_atou(const char *nptr, bool *error);
 uint64_t	get_time_ms(void);
-void		smart_sleep(uint64_t duration, t_sim *sim);
+void		smart_sleep(uint64_t duration);
+uint64_t	get_next_seq(t_sim *sim);
 
 //memory
 void		ft_bzero(void *s, size_t n);
@@ -126,11 +135,15 @@ bool		init_simulation(t_sim *sim);
 
 // coders
 void		*coder_routine(void *arg);
-bool		start_coders(t_sim *sim);
-void		wait_threads(t_sim *sim);
+bool		debug(t_coder *coder);
+bool		refactor(t_coder *coder);
+bool		can_compile(t_coder *coder);
 
 // dongles
-void		release_dongles(t_coder *coder, t_dongle *dongle);
+bool		reserve_dongles(t_coder *coder);
+void		release_dongle(t_dongle *dongle, t_coder *coder);
+void		release_dongles(t_coder *coder, bool rel_left, bool rel_right);
+void		wake_dongles(t_sim *sim);
 
 // cleanup
 void		destroy_dongles(t_sim *sim, int count);
@@ -141,30 +154,39 @@ void		destroy_simulation(t_sim *sim);
 // debug
 void		print_dongles(t_sim *sim);
 
+// getters
+bool		get_stop(t_sim *sim);
+int			get_nb_compiles(t_coder *coder);
+uint64_t	get_deadline(t_coder *coder);
+int			get_finished_coders(t_sim *sim);
+uint64_t	get_policy(t_coder *coder);
+
 // setters
-void		set_stop(t_sim *sim, bool value);
-void		set_state(t_coder *coder, t_state state);
+void		set_stop(t_sim *sim, bool value);;
+void		set_deadline(t_coder *coder, uint64_t deadline);
+void		set_nb_compiles(t_coder *coder, int value);
+void		set_finished_coder(t_sim *sim, int value);
 
 // errors
 bool		print_error(char *str);
 
 //simulation
-bool		simulation_stopped(t_sim *sim);
+
+void		simulation(t_sim *sim);
 
 // logs
 uint64_t	elapsed_time(t_sim *sim);
 void		print_status(t_coder *coder, char *str);
 
 // monitor
-void		check_burnout(t_sim *sim);
+bool		check_burnout(t_sim *sim, uint64_t time);
 bool		check_completion(t_sim *sim);
 void		*monitor_routine(void *arg);
 
 // heap
 // static void	swap(t_request *a, t_request *b);
-bool		request_priority(t_request *a, t_request *b, t_enum_sched policy);
-bool		heap_push(t_heap *heap, t_request request, t_enum_sched policy);
-t_request	heap_pop(t_heap *heap, t_enum_sched policy);
-t_request	*heap_peek(t_heap *heap);
+void		heap_push(t_heap *heap, t_request request);
+t_request	heap_pop(t_heap *heap);
+t_request	heap_peek(t_heap *heap);
 
 #endif

@@ -133,7 +133,7 @@ dard library priority queue may be used).
 '
 J'ai aussi redige le fichier .h, qui ressemble pour le moment a ceci:
 '
-ifndef CODEXION_H
+#ifndef CODEXION_H
 # define CODEXION_H
 
 # include <stdlib.h>
@@ -154,6 +154,7 @@ ifndef CODEXION_H
 # define ERROR_POLICY "The chosen scheduler must be exactly fifo or edf\n"
 
 typedef struct s_sim	t_sim;
+typedef struct s_coder	t_coder;
 
 typedef enum e_scheduler_type
 {
@@ -172,8 +173,7 @@ typedef enum e_state
 
 typedef struct s_request
 {
-	int			coder_id;
-	uint64_t	request_time;
+	t_coder		*coder;
 	uint64_t	deadline;
 	uint64_t	seq;
 }	t_request;
@@ -189,6 +189,7 @@ typedef struct s_dongle
 {
 	pthread_mutex_t	mutex;
 	pthread_cond_t	cond;
+	t_coder			*owner;
 	int				id;
 	bool			available;
 	uint64_t		available_at;
@@ -489,10 +490,7 @@ static void	swap(t_request *a, t_request *b)
 bool	request_priority(t_request *a, t_request *b, t_enum_sched policy)
 {
 	if (policy == FIFO)
-	{
-		if (a->request_time != b->request_time)
-			return (a->request_time < b->request_time);
-	}
+		return (a->seq < b->seq);
 	else
 	{
 		if (a->deadline != b->deadline)
@@ -562,5 +560,205 @@ t_request	*heap_peek(t_heap *heap)
 	return (&heap->data[0]);
 }
 '
-J'ai pu tester le tout (avec le main ecrit plus haut), ave Valgrind et Helgrind :
-Pas de leaks ni de datarace.
+Ensuite, tout ce qui a trait aux coders:
+'
+void	*coder_routine(void *arg)
+{
+	t_coder	*coder;
+
+	coder = arg;
+	while (!simulation_stopped(coder->sim))
+	{
+		if (!request_dongle(coder, coder->sim))
+			break ;
+		pthread_mutex_lock(&coder->state_mutex);
+		coder->last_compile_start = get_time_ms();
+		coder->state = COMPILING;
+		pthread_mutex_unlock(&coder->state_mutex);
+		print_status(coder, "\033[1;32mis compiling\033[0;0m");
+		smart_sleep(coder->sim->time_to_compile, coder->sim);
+		pthread_mutex_lock(&coder->state_mutex);
+		coder->nb_compiles++;
+		pthread_mutex_unlock(&coder->state_mutex);
+		release_dongles(coder);
+		set_state(coder, DEBUGGING);
+		print_status(coder, "\033[1;35mis debugging\033[0;0m");
+		smart_sleep(coder->sim->time_to_debug, coder->sim);
+		set_state(coder, REFACTORING);
+		print_status(coder, "\033[1;36mis refactoring\033[0;0m");
+		smart_sleep(coder->sim->time_to_refactor, coder->sim);
+	}
+	return (NULL);
+}
+
+
+bool	start_coders(t_sim *sim)
+{
+	int	i;
+
+	i = 0;
+	while (i < sim->nb_coders)
+	{
+		if (pthread_create(&sim->coders[i].thread, NULL,
+				coder_routine, &sim->coders[i]) != 0)
+			return (false);
+		i++;
+	}
+	return (true);
+}
+
+void	wait_threads(t_sim *sim)
+{
+	int	i;
+
+	i = 0;
+	while (i < sim->nb_coders)
+	{
+		pthread_join(sim->coders[i].thread, NULL);
+		i++;
+	}
+	pthread_join(sim->monitor, NULL);
+}
+
+bool	can_compile(t_coder *coder)
+{
+	t_dongle	*left;
+	t_dongle	*right;
+	uint64_t	time;
+
+	left = coder->left_dongle;
+	right = coder->right_dongle;
+	time = get_time_ms();
+	if (!heap_peek(&left->waiters)
+		|| heap_peek(&left->waiters)->coder != coder)
+		return (false);
+	if (!heap_peek(&right->waiters)
+		|| heap_peek(&right->waiters)->coder != coder)
+		return (false);
+	if (!left->available || !right->available)
+		return (false);
+	if (time < left->available_at || time < right->available_at)
+		return (false);
+	return (true);
+}
+'
+Et aux dongles :
+'
+void	reserve_dongles(t_coder *coder)
+{
+	t_dongle	*left;
+	t_dongle	*right;
+
+	left = coder->left_dongle;
+	right = coder->right_dongle;
+	left->available = false;
+	right->available = false;
+	left->owner = coder;
+	right->owner = coder;
+	heap_pop(&left->waiters, coder->sim->policy);
+	heap_pop(&right->waiters, coder->sim->policy);
+}
+
+bool	request_dongle(t_coder *coder, t_sim *sim)
+{
+	t_request	req;
+
+	req.coder = coder;
+	req.deadline = coder->last_compile_start + coder->sim->time_to_burnout;
+	req.seq = get_next_seq(coder->sim);
+	lock_dongles(coder->left_dongle, coder->right_dongle);
+	heap_push(&coder->left_dongle->waiters, req, sim->policy);
+	heap_push(&coder->right_dongle->waiters, req, sim->policy);
+	unlock_dongles(coder->left_dongle, coder->right_dongle);
+	while (!simulation_stopped(sim))
+	{
+		lock_dongles(coder->left_dongle, coder->right_dongle);
+		if (can_compile(coder))
+		{
+			reserve_dongles(coder);
+			unlock_dongles(coder->left_dongle, coder->right_dongle);
+			return (true);
+		}
+		unlock_dongles(coder->left_dongle, coder->right_dongle);
+		usleep(100);
+	}
+	return (false);
+}
+
+void	lock_dongles(t_dongle *a, t_dongle *b)
+{
+	if (a->id < b->id)
+	{
+		pthread_mutex_lock(&a->mutex);
+		pthread_mutex_lock(&b->mutex);
+	}
+	else
+	{
+		pthread_mutex_lock(&b->mutex);
+		pthread_mutex_lock(&a->mutex);
+	}
+}
+
+void	unlock_dongles(t_dongle *a, t_dongle *b)
+{
+	if (a->id < b->id)
+	{
+		pthread_mutex_unlock(&a->mutex);
+		pthread_mutex_unlock(&b->mutex);
+	}
+	else
+	{
+		pthread_mutex_unlock(&b->mutex);
+		pthread_mutex_unlock(&a->mutex);
+	}
+}
+
+void	release_dongles(t_coder *coder)
+{
+	t_dongle	*left;
+	t_dongle	*right;
+	uint64_t	time;
+
+	left = coder->left_dongle;
+	right = coder->right_dongle;
+	time = get_time_ms();
+	lock_dongles(left, right);
+	left->owner = NULL;
+	right->owner = NULL;
+	left->available = true;
+	right->available = true;
+	left->available_at = time + coder->sim->cooldown;
+	right->available_at = time + coder->sim->cooldown;
+	unlock_dongles(left, right);
+}
+'
+J'ai pu tester le tout (avec le main ecrit plus haut), avec Valgrind et Helgrind, pas de leaks ni de datarace.
+Le programme est, techniquement, fonctionnel, mais les valeurs imprimees ne semblent que partiellement coherentes. Par exemple, avec ./codexion 4 60 10 10 10 1 10 fifo, on obtient :
+'
+0 2 is compiling
+10 2 is debugging
+20 3 is compiling
+20 2 is refactoring
+20 1 is compiling
+30 1 is debugging
+30 3 is debugging
+40 2 is compiling
+40 1 is refactoring
+40 3 is refactoring
+40 4 is compiling
+50 2 is debugging
+50 4 is debugging
+'
+OU le plus souvent :
+'
+0 1 is compiling
+10 1 is debugging
+20 1 is refactoring
+20 2 is compiling
+30 2 is debugging
+40 2 is refactoring
+40 3 is compiling
+50 3 is debugging
+60 3 is refactoring
+60 1 burned out
+'
