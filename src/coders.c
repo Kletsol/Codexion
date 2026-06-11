@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/11 11:06:40 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/11 17:52:04 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ void	*coder_routine(void *arg)
 			return (NULL);
 		if (!refactor(coder))
 			return (NULL);
-		set_nb_compiles(coder, compiles + 1);
+		set_nb_compiles(coder, ++compiles);
 	}
 	set_finished_coder(coder->sim, 1);
 	return (NULL);

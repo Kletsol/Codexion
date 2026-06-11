@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/11 11:33:58 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/11 17:57:42 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ void	wait_dongle(t_coder *coder, t_dongle *dongle)
 	uint64_t		wake_at;
 
 	while (heap_peek(&dongle->waiters).coder_id != coder->id
-		|| !dongle->available || get_time_ms() < dongle->end_cooldown)
+		|| (!dongle->available) || get_time_ms() < dongle->end_cooldown)
 	{
 		if (get_stop(coder->sim))
 			break ;
@@ -156,10 +156,8 @@ bool	reserve_dongles(t_coder *coder)
 // 			unlock_dongles(coder->left_dongle, coder->right_dongle);
 // 			break ;
 // 		}
-// 		// printf("Coder %d\n" "  left dongle=%d top=%d\n" "  right dongle=%d top=%d\n", coder->id, coder->left_dongle->id, heap_peek(&coder->left_dongle->waiters)->coder->id, coder->right_dongle->id, heap_peek(&coder->right_dongle->waiters)->coder->id);
 // 		pthread_cond_wait(&sim->scheduler_cond, &sim->scheduler_mutex);
 // 	}
-// 	// printf("coder %d waiting: " "left_top=%d right_top=%d\n", coder->id, heap_peek(&coder->left_dongle->waiters)->coder->id, heap_peek(&coder->right_dongle->waiters)->coder->id);
 // 	pthread_mutex_unlock(&sim->scheduler_mutex);
 // 	return (false);
 // }
@@ -227,5 +225,6 @@ void	wake_dongles(t_sim *sim)
 		pthread_mutex_lock(&sim->dongles[i].mutex);
 		pthread_cond_broadcast(&sim->dongles[i].cond);
 		pthread_mutex_unlock(&sim->dongles[i].mutex);
+		i++;
 	}
 }
