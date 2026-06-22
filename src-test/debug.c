@@ -1,26 +1,28 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   logs.c                                             :+:      :+:    :+:   */
+/*   debug.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/15 13:58:33 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/10 15:42:23 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-uint64_t	elapsed_time(t_sim *sim)
-{
-	return (get_time_ms() - sim->start_time);
-}
+// void	print_dongles(t_sim *sim)
+// {
+// 	int	i;
 
-void	print_status(t_coder *coder, char *str)
-{
-	pthread_mutex_lock(&coder->sim->print_mutex);
-	if (!get_stop(coder->sim))
-		printf("%lu %d %s\n", elapsed_time(coder->sim), coder->id, str);
-	pthread_mutex_unlock(&coder->sim->print_mutex);
-}
+// 	i = 0;
+// 	while (i < sim->nb_coders)
+// 	{
+// 		printf("coder %d -> left %d right %d\n",
+// 			sim->coders[i].id,
+// 			sim->coders[i].left_dongle->id,
+// 			sim->coders[i].right_dongle->id);
+// 		i++;
+// 	}
+// }

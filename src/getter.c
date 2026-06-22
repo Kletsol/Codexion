@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/10 16:46:53 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/17 10:08:51 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,9 +28,9 @@ int	get_nb_compiles(t_coder *coder)
 {
 	int	result;
 
-	pthread_mutex_lock(&coder->cod_mutex);
+	pthread_mutex_lock(&coder->comp_mutex);
 	result = coder->nb_compiles;
-	pthread_mutex_unlock(&coder->cod_mutex);
+	pthread_mutex_unlock(&coder->comp_mutex);
 	return (result);
 }
 
@@ -38,9 +38,9 @@ uint64_t	get_deadline(t_coder *coder)
 {
 	uint64_t	result;
 
-	pthread_mutex_lock(&coder->cod_mutex);
+	pthread_mutex_lock(&coder->death_mutex);
 	result = coder->deadline;
-	pthread_mutex_unlock(&coder->cod_mutex);
+	pthread_mutex_unlock(&coder->death_mutex);
 	return (result);
 }
 
@@ -57,6 +57,6 @@ int	get_finished_coders(t_sim *sim)
 uint64_t	get_policy(t_coder *coder)
 {
 	if (coder->sim->policy)
-		return (coder->compile_start + coder->sim->time_to_burnout);
+		return (get_deadline(coder));
 	return (get_time_ms());
 }

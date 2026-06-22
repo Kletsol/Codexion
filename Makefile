@@ -6,7 +6,7 @@
 #    By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/12/05 16:12:56 by lbonnet           #+#    #+#              #
-#    Updated: 2026/06/06 11:34:14 by lbonnet          ###   ########.fr        #
+#    Updated: 2026/06/20 13:45:59 by lbonnet          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,22 +16,23 @@ NAME=codexion
 CC=cc
 C_FLAGS=-Wall -Wextra -Werror -pthread -g3
 H_FILES=
-C_FILES=src/main.c\
-		src/parsing.c\
-		src/utils.c\
-		src/memory.c\
-		src/errors.c\
-		src/initialize.c\
-		src/cleanup.c\
-		src/debug.c\
-		src/setter.c\
-		src/getter.c\
-		src/logs.c\
-		src/simulation.c\
-		src/heap.c\
-		src/monitor.c\
-		src/coders.c\
-		src/dongles.c
+C_FILES=src-test/main.c\
+		src-test/parsing.c\
+		src-test/utils.c\
+		src-test/memory.c\
+		src-test/errors.c\
+		src-test/initialize.c\
+		src-test/cleanup.c\
+		src-test/debug.c\
+		src-test/setter.c\
+		src-test/getter.c\
+		src-test/logs.c\
+		src-test/simulation.c\
+		src-test/heap.c\
+		src-test/monitor.c\
+		src-test/coders.c\
+		src-test/dongles.c\
+		src-test/time.c
 
 all: $(NAME)
 

@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/10 15:03:47 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/18 14:23:31 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,11 +18,13 @@ void	simulation(t_sim *sim)
 
 	i = 0;
 	sim->start_time = get_time_ms();
-	pthread_create(&sim->monitor, NULL, monitor_routine, sim);
+	if (pthread_create(&sim->monitor, NULL, monitor_routine, sim) != 0)
+		return ;
 	while (i < sim->nb_coders)
 	{
-		pthread_create(&sim->coders[i].cod_thread, NULL,
-			coder_routine, &sim->coders[i]);
+		if (pthread_create(&sim->coders[i].cod_thread, NULL,
+				coder_routine, &sim->coders[i]) != 0)
+			return ;
 		i++;
 	}
 }

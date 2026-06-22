@@ -1,26 +1,27 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   logs.c                                             :+:      :+:    :+:   */
+/*   setter.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/15 13:58:33 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/22 10:28:25 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-uint64_t	elapsed_time(t_sim *sim)
+void	set_stop(t_sim *sim, bool value)
 {
-	return (get_time_ms() - sim->start_time);
+	pthread_mutex_lock(&sim->sim_mutex);
+	sim->stop = value;
+	pthread_mutex_unlock(&sim->sim_mutex);
 }
 
-void	print_status(t_coder *coder, char *str)
+void	set_nb_compiles(t_coder *coder, int value)
 {
-	pthread_mutex_lock(&coder->sim->print_mutex);
-	if (!get_stop(coder->sim))
-		printf("%lu %d %s\n", elapsed_time(coder->sim), coder->id, str);
-	pthread_mutex_unlock(&coder->sim->print_mutex);
+	pthread_mutex_lock(&coder->comp_mutex);
+	coder->nb_compiles = value;
+	pthread_mutex_unlock(&coder->comp_mutex);
 }

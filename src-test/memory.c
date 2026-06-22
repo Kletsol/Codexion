@@ -1,26 +1,33 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   logs.c                                             :+:      :+:    :+:   */
+/*   memory.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/15 13:58:33 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/05/28 15:57:27 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-uint64_t	elapsed_time(t_sim *sim)
+void	ft_bzero(void *s, size_t n)
 {
-	return (get_time_ms() - sim->start_time);
+	memset(s, 0, n);
 }
 
-void	print_status(t_coder *coder, char *str)
+void	*ft_calloc(size_t nmemb, size_t size)
 {
-	pthread_mutex_lock(&coder->sim->print_mutex);
-	if (!get_stop(coder->sim))
-		printf("%lu %d %s\n", elapsed_time(coder->sim), coder->id, str);
-	pthread_mutex_unlock(&coder->sim->print_mutex);
+	size_t	total_size;
+	void	*new;
+
+	total_size = nmemb * size;
+	if (size != 0 && total_size / size != nmemb)
+		return (NULL);
+	new = malloc(total_size);
+	if (!new)
+		return (NULL);
+	ft_bzero(new, total_size);
+	return (new);
 }

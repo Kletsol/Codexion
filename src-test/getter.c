@@ -1,41 +1,49 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   setter.c                                           :+:      :+:    :+:   */
+/*   getter.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/15 16:41:09 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/22 10:29:02 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-void	set_stop(t_sim *sim, bool value)
+bool	get_stop(t_sim *sim)
 {
+	bool	result;
+
 	pthread_mutex_lock(&sim->sim_mutex);
-	sim->stop = value;
+	result = sim->stop;
 	pthread_mutex_unlock(&sim->sim_mutex);
+	if (result)
+		return (true);
+	return (false);
 }
 
-void	set_deadline(t_coder *coder, uint64_t deadline)
+int	get_nb_compiles(t_coder *coder)
 {
-	pthread_mutex_lock(&coder->death_mutex);
-	coder->deadline = deadline;
-	pthread_mutex_unlock(&coder->death_mutex);
-}
+	int	result;
 
-void	set_nb_compiles(t_coder *coder, int value)
-{
 	pthread_mutex_lock(&coder->comp_mutex);
-	coder->nb_compiles = value;
+	result = coder->nb_compiles;
 	pthread_mutex_unlock(&coder->comp_mutex);
+	return (result);
 }
 
-void	set_finished_coder(t_sim *sim, int value)
+bool	get_dongle_state(t_dongle *dongle, t_sim *sim)
 {
-	pthread_mutex_lock(&sim->stop_mutex);
-	sim->finished_coders += value;
-	pthread_mutex_unlock(&sim->stop_mutex);
+	bool	available;
+
+	pthread_mutex_lock(&dongle->state);
+	if (dongle->last_use == 0
+		|| get_time_ms(sim) - dongle->last_use >= sim->cooldown)
+		available = false;
+	else
+		available = true;
+	pthread_mutex_unlock(&dongle->state);
+	return (available);
 }

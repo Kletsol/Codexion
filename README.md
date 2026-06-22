@@ -41,32 +41,16 @@
 
 ### -> Thread synchronization mechanisms
 
-Quand un coder veut compiler, il :
 
-	crée une requête
-	↓
-	s'insère dans la file gauche
-	↓
-	s'insère dans la file droite
-	↓
-	attend
-
-Puis il est autorisé à compiler uniquement si :
-
-	il est premier dans la file gauche
-	ET
-	il est premier dans la file droite
-	ET
-	les deux dongles sont disponibles
-	ET
-	les cooldowns sont terminés
 
 
 -g3 -fsanitize=thread
 
 
-J'ai un projet en c dont le but est de travailler sur les pthread et tout ce qui va avec (mutex...). Le sujet, en resume, est le suivant:
-'Codexion is a concurrent programming project implementing a variation of the classic Dining Philosophers problem, adapted to a coding environment.
+J'ai un projet en c dont le but est de travailler sur les pthread et tout ce qui va avec (mutex...)
+Sujet resume :
+'
+Codexion is a concurrent programming project implementing a variation of the classic Dining Philosophers problem, adapted to a coding environment.
 
 N coders sit in a circle around a shared Quantum Compiler. Each coder alternates between three activities: compiling, debugging, and refactoring. Compiling requires holding two USB dongles simultaneously (left and right). There are as many dongles as coders, one between each adjacent pair.
 
@@ -74,7 +58,7 @@ A coder burns out if they fail to start a new compilation within time_to_burnout
 
 Each coder runs as an independent POSIX thread. A dedicated monitor thread polls the simulation state every 100 µs and detects burnout within the 10 ms precision constraint imposed by the subject.'
 
-J'ai fait le parsing des arguments acceptes par le programme, qui sont les suivants:
+Arguments acceptes par le programme :
 '
 number_of_coders: The number of coders and also the number of dongles.
 ◦ time_to_burnout (in milliseconds): If a coder did not start compiling within
@@ -99,7 +83,7 @@ request arrived first.
 edf means Earliest Deadline First with deadline = last_compile_start +
 time_to_burnout
 '
-Et quelques regles en plus :
+Quelques regles en plus :
 '
 The specific rules for the mandatory part are:
 • Each coder must be represented by a thread (using pthread_create).
@@ -131,7 +115,7 @@ piled at least number_of_compiles_required times.
 dard library priority queue may be used).
 • All memory must be properly allocated and freed (no memory leaks).
 '
-J'ai aussi redige le fichier .h, qui ressemble pour le moment a ceci:
+Fichier .h actuel :
 '
 #ifndef CODEXION_H
 # define CODEXION_H
@@ -171,11 +155,16 @@ typedef enum e_state
 	BURNED_OUT
 }	t_state;
 
+typedef struct s_to_clean
+{
+	int			nb_dongles;
+	int			nb_coders;
+}	t_to_clean;
+
 typedef struct s_request
 {
-	t_coder		*coder;
-	uint64_t	deadline;
-	uint64_t	seq;
+	int			coder_id;
+	uint64_t	priority;
 }	t_request;
 
 typedef struct s_heap
@@ -187,26 +176,25 @@ typedef struct s_heap
 
 typedef struct s_dongle
 {
-	pthread_mutex_t	mutex;
-	pthread_cond_t	cond;
-	t_coder			*owner;
 	int				id;
-	bool			available;
-	uint64_t		available_at;
+	pthread_mutex_t	mutex;
+	bool			taken;
+	uint64_t		end_cooldown;
 	t_heap			waiters;
 }	t_dongle;
 
 typedef struct s_coder
 {
 	int				id;
-	pthread_t		thread;
-	t_dongle		*left_dongle;
-	t_dongle		*right_dongle;
-	pthread_mutex_t	state_mutex;
+	pthread_t		cod_thread;
+	pthread_mutex_t	death_mutex;
+	pthread_mutex_t	comp_mutex;
+	t_dongle		*left;
+	t_dongle		*right;
 	t_sim			*sim;
-	t_state			state;
-	uint64_t		last_compile_start;
+	uint64_t		compile_start;
 	int				nb_compiles;
+	uint64_t		deadline;
 }	t_coder;
 
 typedef struct s_sim
@@ -221,544 +209,113 @@ typedef struct s_sim
 	t_enum_sched	policy;
 	bool			stop;
 	uint64_t		start_time;
+	pthread_mutex_t	sim_mutex;
 	pthread_mutex_t	stop_mutex;
 	pthread_mutex_t	print_mutex;
+	pthread_mutex_t	sched_mutex;
+	pthread_cond_t	sched_cond;
 	pthread_t		monitor;
 	t_coder			*coders;
 	t_dongle		*dongles;
+	int				finished_coders;
+	t_to_clean		cleanup;
 }	t_sim;
 
 // utils
-uint64_t	ft_atou(const char *nptr, bool *error);
-uint64_t	get_time_ms(void);
-void		smart_sleep(uint64_t duration, t_sim *sim);
+uint64_t		ft_atou(const char *nptr, bool *error);
+uint64_t		get_time_ms(void);
+void			smart_sleep(uint64_t duration, t_sim *sim);
+uint64_t		get_next_seq(t_sim *sim);
+struct timespec	compute_next_wake(t_dongle *d);
+
+// time
+long long		get_time_in_usec(void);
+void			psleep(long long usec);
 
 //memory
-void		ft_bzero(void *s, size_t n);
-void		*ft_calloc(size_t nmemb, size_t size);
+void			ft_bzero(void *s, size_t n);
+void			*ft_calloc(size_t nmemb, size_t size);
 
 // parsing
-bool		parser(char **av, t_sim *simulation);
+bool			parser(char **av, t_sim *simulation);
 
 // init
-bool		init_heap(t_dongle *dongle, t_sim *sim);
-bool		init_coders(t_sim *sim);
-bool		init_dongles(t_sim *sim);
-bool		init_simulation(t_sim *sim);
+bool			init_dongles(t_sim *sim);
+void			swap_hands(t_coder *coder);
+bool			init_coders(t_sim *sim);
+bool			init_simulation(t_sim *sim);
 
 // coders
-void		*coder_routine(void *arg);
-bool		start_coders(t_sim *sim);
-void		wait_threads(t_sim *sim);
+void			*coder_routine(void *arg);
+bool			debug(t_coder *coder);
+bool			refactor(t_coder *coder);
+bool			can_compile(t_coder *coder);
 
 // dongles
-void		release_dongles(t_coder *coder, t_dongle *dongle);
+
 
 // cleanup
-void		destroy_dongles(t_sim *sim, int count);
-void		destroy_coders(t_sim *sim, int count);
-void		destroy_global_mutexes(t_sim *sim);
-void		destroy_simulation(t_sim *sim);
+void			join_coders(t_sim *sim);
+void			destroy_simulation(t_sim *sim);
 
 // debug
-void		print_dongles(t_sim *sim);
+void			print_dongles(t_sim *sim);
+
+// getters
+bool			get_stop(t_sim *sim);
+int				get_nb_compiles(t_coder *coder);
+uint64_t		get_deadline(t_coder *coder);
+int				get_finished_coders(t_sim *sim);
+uint64_t		get_priority(t_coder *coder);
 
 // setters
-void		set_stop(t_sim *sim, bool value);
-void		set_state(t_coder *coder, t_state state);
+void			set_stop(t_sim *sim, bool value);;
+void			set_deadline(t_coder *coder, uint64_t deadline);
+void			set_nb_compiles(t_coder *coder, int value);
+void			set_finished_coder(t_sim *sim, int value);
 
 // errors
-bool		print_error(char *str);
+bool			print_error(char *str);
 
 //simulation
-bool		simulation_stopped(t_sim *sim);
+
+void			simulation(t_sim *sim);
 
 // logs
-uint64_t	elapsed_time(t_sim *sim);
-void		print_status(t_coder *coder, char *str);
+uint64_t		elapsed_time(t_sim *sim);
+void			print_status(t_coder *coder, char *str);
 
 // monitor
-void		check_burnout(t_sim *sim);
-bool		check_completion(t_sim *sim);
-void		*monitor_routine(void *arg);
+bool			check_burnout(t_sim *sim, uint64_t time);
+void			*monitor_routine(void *arg);
 
 // heap
 // static void	swap(t_request *a, t_request *b);
-bool		request_priority(t_request *a, t_request *b, t_enum_sched policy);
-bool		heap_push(t_heap *heap, t_request request, t_enum_sched policy);
-t_request	heap_pop(t_heap *heap, t_enum_sched policy);
-t_request	*heap_peek(t_heap *heap);
+void			heap_remove(t_heap *heap, int index);
+void			heap_push(t_heap *heap, t_request request);
+t_request		heap_pop(t_heap *heap);
+t_request		heap_peek(t_heap *heap);
+t_request		heap_pop_valid(t_heap *h);
 
 #endif
 '
-Toutes les fonctions mentionnees dans le fichier .h sont deja entierement ecrites.
-J'ai egalement :
-- Un main :
-'
-int	main(int ac, char **av)
-{
-	t_sim	sim;
+Quelques precisions avant tout :
+- C'est ma quatrieme version du code, il reste donc tres probablement des artefacts des precedentes implementations dans le .h et dans d'autres fichiers que je serais amene a montrer.
 
-	if (ac != 9)
-	{
-		print_error(ERROR_MISSING_ARG);
-		return (1);
-	}
-	else if (!parser(av, &sim))
-		return (1);
-	else
-	{
-		printf("%s", "[Parsing succeeded !]\n\n");
-		init_simulation(&sim);
-		start_coders(&sim);
-		pthread_create(&sim.monitor, NULL, monitor_routine, &sim);
-		wait_threads(&sim);
-		destroy_simulation(&sim);
-		return (0);
-	}
-}
-- Une initialisation :
-'
-bool	init_heap(t_dongle *dongle, t_sim *sim)
-{
-	dongle->waiters.capacity = sim->nb_coders;
-	dongle->waiters.size = 0;
-	dongle->waiters.data = ft_calloc(sim->nb_coders, sizeof(t_request));
-	if (!dongle->waiters.data)
-		return (false);
-	return (true);
-}
+- Je gererai les exceptions et cas particuliers a la fin, donc inutile de venir avec des cas comme "si il n'y a un seul coder, etc."
 
-bool	init_dongles(t_sim *sim)
-{
-	int	i;
+- Si un coder burnout, la simulation s'arrete, donc inutile de retirer des requetes mortes de la heap
 
-	sim->dongles = ft_calloc(sim->nb_coders, sizeof(t_dongle));
-	if (!sim->dongles)
-		return (false);
-	i = -1;
-	while (++i < sim->nb_coders)
-	{
-		sim->dongles[i].id = i;
-		sim->dongles[i].available = true;
-		sim->dongles[i].available_at = 0;
-		if ((!init_heap(&sim->dongles[i], sim))
-			|| pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
-		{
-			destroy_dongles(sim, i);
-			return (false);
-		}
-		if (pthread_cond_init(&sim->dongles[i].cond, NULL) != 0)
-		{
-			pthread_mutex_destroy(&sim->dongles[i].mutex);
-			destroy_dongles(sim, i);
-			return (false);
-		}
-	}
-	return (true);
-}
+- Chaque heap est de capacite 2, car seuls les deux coders voisins du dongle peuvent le prendre
 
-bool	init_coders(t_sim *sim)
-{
-	int	i;
+L'idee avec cette quatrieme version est de repartir sur une base saine apres bien trop d'elucubrations et de morceaux de code partis trop loin. On respecte donc les principes suivants :
+- 1 mutex par dongle
+- 1 heap par dongle
+- 1 condition globale dans sim
 
-	sim->coders = ft_calloc(sim->nb_coders, sizeof(t_coder));
-	if (!sim->coders)
-		return (false);
-	i = 0;
-	while (i < sim->nb_coders)
-	{
-		sim->coders[i].id = i + 1;
-		sim->coders[i].sim = sim;
-		sim->coders[i].last_compile_start = sim->start_time;
-		sim->coders[i].left_dongle = &sim->dongles[i];
-		sim->coders[i].right_dongle = &sim->dongles[(i + 1) % sim->nb_coders];
-		if (pthread_mutex_init(&sim->coders[i].state_mutex, NULL) != 0)
-		{
-			destroy_coders(sim, i);
-			return (false);
-		}
-		i++;
-	}
-	return (true);
-}
-
-bool	init_simulation(t_sim *sim)
-{
-	sim->start_time = get_time_ms();
-	sim->stop = false;
-	if (pthread_mutex_init(&sim->stop_mutex, NULL) != 0)
-		return (false);
-	if (pthread_mutex_init(&sim->print_mutex, NULL) != 0)
-	{
-		pthread_mutex_destroy(&sim->stop_mutex);
-		return (false);
-	}
-	if (!init_dongles(sim))
-	{
-		destroy_global_mutexes(sim);
-		return (false);
-	}
-	if (!init_coders(sim))
-	{
-		destroy_dongles(sim, sim->nb_coders);
-		destroy_global_mutexes(sim);
-		return (false);
-	}
-	return (true);
-}
-'
-- Un monitor :
-'
-void	check_burnout(t_sim *sim)
-{
-	int			i;
-	uint64_t	elapsed;
-	uint64_t	time;
-
-	i = 0;
-	while (i < sim->nb_coders)
-	{
-		pthread_mutex_lock(&sim->coders[i].state_mutex);
-		elapsed = get_time_ms() - sim->coders[i].last_compile_start;
-		if (elapsed >= sim->time_to_burnout)
-		{
-			time = elapsed_time(sim->coders[i].sim);
-			sim->coders[i].state = BURNED_OUT;
-			set_stop(sim, true);
-			pthread_mutex_unlock(&sim->coders[i].state_mutex);
-			pthread_mutex_lock(&sim->print_mutex);
-			printf("%lu %d burned out\n", time, sim->coders[i].id);
-			pthread_mutex_unlock(&sim->print_mutex);
-			return ;
-		}
-		pthread_mutex_unlock(&sim->coders[i].state_mutex);
-		i++;
-	}
-}
-
-bool	check_completion(t_sim *sim)
-{
-	int		i;
-
-	i = 0;
-	while (i < sim->nb_coders)
-	{
-		pthread_mutex_lock(&sim->coders[i].state_mutex);
-		if (sim->coders[i].nb_compiles < sim->nb_compiles)
-		{
-			pthread_mutex_unlock(&sim->coders[i].state_mutex);
-			return (false);
-		}
-		pthread_mutex_unlock(&sim->coders[i].state_mutex);
-		i++;
-	}
-	return (true);
-}
-
-void	*monitor_routine(void *arg)
-{
-	t_sim	*sim;
-
-	sim = (t_sim *)arg;
-	while (!simulation_stopped(sim))
-	{
-		check_burnout(sim);
-		if (simulation_stopped(sim))
-			break ;
-		if (check_completion(sim))
-		{
-			set_stop(sim, true);
-			break ;
-		}
-		usleep(100);
-	}
-	return (NULL);
-}
-'
-Et les fonctions de la heap :
-'
-static void	swap(t_request *a, t_request *b)
-{
-	t_request	temp;
-
-	temp = *a;
-	*a = *b;
-	*b = temp;
-}
-
-bool	request_priority(t_request *a, t_request *b, t_enum_sched policy)
-{
-	if (policy == FIFO)
-		return (a->seq < b->seq);
-	else
-	{
-		if (a->deadline != b->deadline)
-			return (a->deadline < b->deadline);
-	}
-	return (a->seq < b->seq);
-}
-
-
-bool	heap_push(t_heap *heap, t_request request, t_enum_sched policy)
-{
-	int			i;
-	int			parent;
-
-	if (heap->size >= heap->capacity)
-		return (false);
-	heap->data[heap->size] = request;
-	i = heap->size;
-	heap->size++;
-	while (i > 0)
-	{
-		parent = (i - 1) / 2;
-		if (request_priority(&heap->data[i], &heap->data[parent], policy))
-		{
-			swap(&heap->data[parent], &heap->data[i]);
-			i = parent;
-		}
-		else
-			break ;
-	}
-	return (true);
-}
-
-t_request	heap_pop(t_heap *heap, t_enum_sched policy)
-{
-	t_request	node;
-	int			i;
-	int			smallest;
-
-	i = 0;
-	if (heap->size == 0)
-		return ((t_request){0});
-	node = heap->data[0];
-	heap->data[0] = heap->data[heap->size - 1];
-	heap->size--;
-	while (true)
-	{
-		smallest = i;
-		if (2 * i + 1 < heap->size && request_priority(
-				&heap->data[2 * i + 1], &heap->data[smallest], policy))
-			smallest = 2 * i + 1;
-		if (2 * i + 2 < heap->size && request_priority(
-				&heap->data[2 * i + 2], &heap->data[smallest], policy))
-			smallest = 2 * i + 2;
-		if (smallest == i)
-			break ;
-		swap(&heap->data[i], &heap->data[smallest]);
-		i = smallest;
-	}
-	return (node);
-}
-
-t_request	*heap_peek(t_heap *heap)
-{
-	if (heap->size == 0)
-		return (NULL);
-	return (&heap->data[0]);
-}
-'
-Ensuite, tout ce qui a trait aux coders:
-'
-void	*coder_routine(void *arg)
-{
-	t_coder	*coder;
-
-	coder = arg;
-	while (!simulation_stopped(coder->sim))
-	{
-		if (!request_dongle(coder, coder->sim))
-			break ;
-		pthread_mutex_lock(&coder->state_mutex);
-		coder->last_compile_start = get_time_ms();
-		coder->state = COMPILING;
-		pthread_mutex_unlock(&coder->state_mutex);
-		print_status(coder, "\033[1;32mis compiling\033[0;0m");
-		smart_sleep(coder->sim->time_to_compile, coder->sim);
-		pthread_mutex_lock(&coder->state_mutex);
-		coder->nb_compiles++;
-		pthread_mutex_unlock(&coder->state_mutex);
-		release_dongles(coder);
-		set_state(coder, DEBUGGING);
-		print_status(coder, "\033[1;35mis debugging\033[0;0m");
-		smart_sleep(coder->sim->time_to_debug, coder->sim);
-		set_state(coder, REFACTORING);
-		print_status(coder, "\033[1;36mis refactoring\033[0;0m");
-		smart_sleep(coder->sim->time_to_refactor, coder->sim);
-	}
-	return (NULL);
-}
-
-
-bool	start_coders(t_sim *sim)
-{
-	int	i;
-
-	i = 0;
-	while (i < sim->nb_coders)
-	{
-		if (pthread_create(&sim->coders[i].thread, NULL,
-				coder_routine, &sim->coders[i]) != 0)
-			return (false);
-		i++;
-	}
-	return (true);
-}
-
-void	wait_threads(t_sim *sim)
-{
-	int	i;
-
-	i = 0;
-	while (i < sim->nb_coders)
-	{
-		pthread_join(sim->coders[i].thread, NULL);
-		i++;
-	}
-	pthread_join(sim->monitor, NULL);
-}
-
-bool	can_compile(t_coder *coder)
-{
-	t_dongle	*left;
-	t_dongle	*right;
-	uint64_t	time;
-
-	left = coder->left_dongle;
-	right = coder->right_dongle;
-	time = get_time_ms();
-	if (!heap_peek(&left->waiters)
-		|| heap_peek(&left->waiters)->coder != coder)
-		return (false);
-	if (!heap_peek(&right->waiters)
-		|| heap_peek(&right->waiters)->coder != coder)
-		return (false);
-	if (!left->available || !right->available)
-		return (false);
-	if (time < left->available_at || time < right->available_at)
-		return (false);
-	return (true);
-}
-'
-Et aux dongles :
-'
-void	reserve_dongles(t_coder *coder)
-{
-	t_dongle	*left;
-	t_dongle	*right;
-
-	left = coder->left_dongle;
-	right = coder->right_dongle;
-	left->available = false;
-	right->available = false;
-	left->owner = coder;
-	right->owner = coder;
-	heap_pop(&left->waiters, coder->sim->policy);
-	heap_pop(&right->waiters, coder->sim->policy);
-}
-
-bool	request_dongle(t_coder *coder, t_sim *sim)
-{
-	t_request	req;
-
-	req.coder = coder;
-	req.deadline = coder->last_compile_start + coder->sim->time_to_burnout;
-	req.seq = get_next_seq(coder->sim);
-	lock_dongles(coder->left_dongle, coder->right_dongle);
-	heap_push(&coder->left_dongle->waiters, req, sim->policy);
-	heap_push(&coder->right_dongle->waiters, req, sim->policy);
-	unlock_dongles(coder->left_dongle, coder->right_dongle);
-	while (!simulation_stopped(sim))
-	{
-		lock_dongles(coder->left_dongle, coder->right_dongle);
-		if (can_compile(coder))
-		{
-			reserve_dongles(coder);
-			unlock_dongles(coder->left_dongle, coder->right_dongle);
-			return (true);
-		}
-		unlock_dongles(coder->left_dongle, coder->right_dongle);
-		usleep(100);
-	}
-	return (false);
-}
-
-void	lock_dongles(t_dongle *a, t_dongle *b)
-{
-	if (a->id < b->id)
-	{
-		pthread_mutex_lock(&a->mutex);
-		pthread_mutex_lock(&b->mutex);
-	}
-	else
-	{
-		pthread_mutex_lock(&b->mutex);
-		pthread_mutex_lock(&a->mutex);
-	}
-}
-
-void	unlock_dongles(t_dongle *a, t_dongle *b)
-{
-	if (a->id < b->id)
-	{
-		pthread_mutex_unlock(&a->mutex);
-		pthread_mutex_unlock(&b->mutex);
-	}
-	else
-	{
-		pthread_mutex_unlock(&b->mutex);
-		pthread_mutex_unlock(&a->mutex);
-	}
-}
-
-void	release_dongles(t_coder *coder)
-{
-	t_dongle	*left;
-	t_dongle	*right;
-	uint64_t	time;
-
-	left = coder->left_dongle;
-	right = coder->right_dongle;
-	time = get_time_ms();
-	lock_dongles(left, right);
-	left->owner = NULL;
-	right->owner = NULL;
-	left->available = true;
-	right->available = true;
-	left->available_at = time + coder->sim->cooldown;
-	right->available_at = time + coder->sim->cooldown;
-	unlock_dongles(left, right);
-}
-'
-J'ai pu tester le tout (avec le main ecrit plus haut), avec Valgrind et Helgrind, pas de leaks ni de datarace.
-Le programme est, techniquement, fonctionnel, mais les valeurs imprimees ne semblent que partiellement coherentes. Par exemple, avec ./codexion 4 60 10 10 10 1 10 fifo, on obtient :
-'
-0 2 is compiling
-10 2 is debugging
-20 3 is compiling
-20 2 is refactoring
-20 1 is compiling
-30 1 is debugging
-30 3 is debugging
-40 2 is compiling
-40 1 is refactoring
-40 3 is refactoring
-40 4 is compiling
-50 2 is debugging
-50 4 is debugging
-'
-OU le plus souvent :
-'
-0 1 is compiling
-10 1 is debugging
-20 1 is refactoring
-20 2 is compiling
-30 2 is debugging
-40 2 is refactoring
-40 3 is compiling
-50 3 is debugging
-60 3 is refactoring
-60 1 burned out
-'
+J'ai deja reecrit, suivant ces principes :
+- La routine coders
+- Les fonctions des dongles
+- L'initialisation
+- Le nettoyage
+- Une partie des fonctions de la heap, a verifier dans la nesure ou c4est l'une des parties les plus dangereuses du projet.

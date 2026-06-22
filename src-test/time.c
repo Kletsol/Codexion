@@ -1,26 +1,34 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   logs.c                                             :+:      :+:    :+:   */
+/*   time.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/15 13:58:33 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/17 16:13:38 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-uint64_t	elapsed_time(t_sim *sim)
+long long	get_time_in_usec(void)
 {
-	return (get_time_ms() - sim->start_time);
+	struct timeval	tv;
+
+	gettimeofday(&tv, NULL);
+	return ((long long)tv.tv_sec * 1000000 + tv.tv_usec);
 }
 
-void	print_status(t_coder *coder, char *str)
+void	psleep(long long usec)
 {
-	pthread_mutex_lock(&coder->sim->print_mutex);
-	if (!get_stop(coder->sim))
-		printf("%lu %d %s\n", elapsed_time(coder->sim), coder->id, str);
-	pthread_mutex_unlock(&coder->sim->print_mutex);
+	long long	start;
+
+	start = get_time_in_usec();
+	if (usec > 1000000)
+		return ;
+	if (usec > 500)
+		usleep(usec - 500);
+	while ((get_time_in_usec() - start) < usec)
+		continue ;
 }

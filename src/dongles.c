@@ -6,32 +6,17 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/11 17:57:42 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/15 16:48:59 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-void	wait_dongle(t_coder *coder, t_dongle *dongle)
+bool	can_take(t_coder *c, t_dongle *d)
 {
-	struct timespec	ts;
-	uint64_t		wake_at;
-
-	while (heap_peek(&dongle->waiters).coder_id != coder->id
-		|| (!dongle->available) || get_time_ms() < dongle->end_cooldown)
-	{
-		if (get_stop(coder->sim))
-			break ;
-		wake_at = dongle->end_cooldown;
-		if (dongle->available && get_time_ms() < wake_at)
-		{
-			ts.tv_sec = wake_at / 1000;
-			ts.tv_nsec = (wake_at % 1000) * 1000000;
-			pthread_cond_timedwait(&dongle->cond, &dongle->mutex, &ts);
-		}
-		else
-			pthread_cond_wait(&dongle->cond, &dongle->mutex);
-	}
+	return (d->available
+		&& get_time_ms() >= d->available_at
+		&& heap_peek(&d->waiters).coder_id == c->id);
 }
 
 bool	take_dongle(t_coder *coder, t_dongle *dongle, uint64_t schedule)
@@ -42,9 +27,18 @@ bool	take_dongle(t_coder *coder, t_dongle *dongle, uint64_t schedule)
 	req.schedule = schedule;
 	pthread_mutex_lock(&dongle->mutex);
 	heap_push(&dongle->waiters, req);
-	wait_dongle(coder, dongle);
-	if (get_stop(coder->sim))
-		return (pthread_mutex_unlock(&dongle->mutex), false);
+	while (!(heap_peek(&dongle->waiters).coder_id == coder->id
+			&& dongle->available))
+	{
+		if (get_stop(coder->sim))
+		{
+			pthread_mutex_unlock(&dongle->mutex);
+			return (false);
+		}
+		pthread_cond_wait(&dongle->cond, &dongle->mutex);
+	}
+	while (get_time_ms() < dongle->available_at)
+		pthread_cond_wait(&dongle->cond, &dongle->mutex);
 	heap_pop(&dongle->waiters);
 	dongle->available = false;
 	pthread_mutex_unlock(&dongle->mutex);
@@ -76,119 +70,6 @@ bool	reserve_dongles(t_coder *coder)
 	}
 	return (true);
 }
-// void	reserve_dongles(t_coder *coder)
-// {
-// 	t_dongle	*left;
-// 	t_dongle	*right;
-
-// 	left = coder->left_dongle;
-// 	right = coder->right_dongle;
-// 	lock_dongles(left, right);
-// 	left->available = false;
-// 	right->available = false;
-// 	left->owner = coder;
-// 	right->owner = coder;
-// 	heap_pop(&left->waiters, coder->sim->policy);
-// 	heap_pop(&right->waiters, coder->sim->policy);
-// 	unlock_dongles(left, right);
-// 	pthread_cond_broadcast(&coder->sim->scheduler_cond);
-// }
-
-// bool	request_dongle(t_coder *coder, t_sim *sim)
-// {
-// 	t_request	req;
-
-// 	req.coder = coder;
-// 	req.deadline = coder->last_compile_start + sim->time_to_burnout;
-// 	req.seq = get_next_seq(sim);
-
-// 	pthread_mutex_lock(&sim->scheduler_mutex);
-
-// 	heap_push(&coder->left_dongle->waiters, req, sim->policy);
-// 	heap_push(&coder->right_dongle->waiters, req, sim->policy);
-
-// 	while (!can_compile(coder) && !simulation_stopped(sim))
-// 		pthread_cond_wait(&sim->scheduler_cond, &sim->scheduler_mutex);
-
-// 	if (simulation_stopped(sim))
-// 	{
-// 		pthread_mutex_unlock(&sim->scheduler_mutex);
-// 		return (false);
-// 	}
-
-// 	reserve_dongles(coder);
-
-// 	pthread_mutex_unlock(&sim->scheduler_mutex);
-// 	return (true);
-// }
-
-// bool	request_dongle(t_coder *coder, t_sim *sim)
-// {
-// 	t_request	req;
-
-// 	req.coder = coder;
-// 	req.deadline = coder->last_compile_start + coder->sim->time_to_burnout;
-// 	req.seq = get_next_seq(coder->sim);
-// 	pthread_mutex_lock(&sim->scheduler_mutex);
-// 	heap_push(&coder->left_dongle->waiters, req, sim->policy);
-// 	heap_push(&coder->right_dongle->waiters, req, sim->policy);
-// 	pthread_cond_broadcast(&sim->scheduler_cond);
-// 	while (!can_compile(coder) && !simulation_stopped(sim))
-// 		pthread_cond_wait(&sim->scheduler_cond, &sim->scheduler_mutex);
-
-// 	if (simulation_stopped(sim))
-// 	{
-// 		pthread_mutex_unlock(&sim->scheduler_mutex);
-// 		return (false);
-// 	}
-
-// 	reserve_dongles(coder);
-
-// 	pthread_mutex_unlock(&sim->scheduler_mutex);
-// 	return (true);
-
-// 	while (!simulation_stopped(sim))
-// 	{
-// 		if (can_compile(coder))
-// 		{
-// 			lock_dongles(coder->left_dongle, coder->right_dongle);
-// 			reserve_dongles(coder);
-// 			unlock_dongles(coder->left_dongle, coder->right_dongle);
-// 			break ;
-// 		}
-// 		pthread_cond_wait(&sim->scheduler_cond, &sim->scheduler_mutex);
-// 	}
-// 	pthread_mutex_unlock(&sim->scheduler_mutex);
-// 	return (false);
-// }
-
-// void	lock_dongles(t_dongle *a, t_dongle *b)
-// {
-// 	if (a->id < b->id)
-// 	{
-// 		pthread_mutex_lock(&a->mutex);
-// 		pthread_mutex_lock(&b->mutex);
-// 	}
-// 	else
-// 	{
-// 		pthread_mutex_lock(&b->mutex);
-// 		pthread_mutex_lock(&a->mutex);
-// 	}
-// }
-
-// void	unlock_dongles(t_dongle *a, t_dongle *b)
-// {
-// 	if (a->id < b->id)
-// 	{
-// 		pthread_mutex_unlock(&a->mutex);
-// 		pthread_mutex_unlock(&b->mutex);
-// 	}
-// 	else
-// 	{
-// 		pthread_mutex_unlock(&b->mutex);
-// 		pthread_mutex_unlock(&a->mutex);
-// 	}
-// }
 
 void	release_dongles(t_coder *coder, bool rel_left, bool rel_right)
 {
@@ -201,7 +82,7 @@ void	release_dongles(t_coder *coder, bool rel_left, bool rel_right)
 	{
 		pthread_mutex_lock(&left->mutex);
 		left->available = true;
-		left->end_cooldown = get_time_ms() + coder->sim->cooldown;
+		left->available_at = get_time_ms() + coder->sim->cooldown;
 		pthread_cond_broadcast(&left->cond);
 		pthread_mutex_unlock(&left->mutex);
 	}
@@ -209,7 +90,7 @@ void	release_dongles(t_coder *coder, bool rel_left, bool rel_right)
 	{
 		pthread_mutex_lock(&right->mutex);
 		right->available = true;
-		right->end_cooldown = get_time_ms() + coder->sim->cooldown;
+		right->available_at = get_time_ms() + coder->sim->cooldown;
 		pthread_cond_broadcast(&right->cond);
 		pthread_mutex_unlock(&right->mutex);
 	}

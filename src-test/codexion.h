@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/17 10:23:03 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/22 16:09:35 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,11 @@
 # define ERROR_NB_COMPILES "Number of compiles must be greater than 0\n"
 # define ERROR_POLICY "The chosen scheduler must be exactly fifo or edf\n"
 
+# define COMPILE "\033[1;32mis compiling\033[0;0m"
+# define DEBUG "\033[1;33mis debugging\033[0;0m"
+# define REFACTOR "\033[1;34mis refactoring\033[0;0m"
+# define BURNOUT "\033[1;31mburned out\033[0;0m"
+
 typedef struct s_sim	t_sim;
 typedef struct s_coder	t_coder;
 
@@ -39,55 +44,35 @@ typedef enum e_scheduler_type
 	EDF = 1
 }	t_enum_sched;
 
-typedef enum e_state
-{
-	WAITING,
-	COMPILING,
-	DEBUGGING,
-	REFACTORING,
-	BURNED_OUT
-}	t_state;
-
 typedef struct s_to_clean
 {
-	bool	print_mutex;
-	bool	sim_mutex;
-	bool	stop_mutex;
-	int		dongles_mutex;
-	int		dongles_cond;
+	int			nb_dongles;
+	int			nb_coders;
+	bool		print_mutex;
+	bool		sim_mutex;
+	bool		stop_mutex;
 }	t_to_clean;
-
-typedef struct s_request
-{
-	int			coder_id;
-	uint64_t	priority;
-}	t_request;
-
-typedef struct s_heap
-{
-	t_request	*data;
-	int			size;
-	int			capacity;
-}	t_heap;
 
 typedef struct s_dongle
 {
-	bool			available;
-	uint64_t		end_cooldown;
+	pthread_mutex_t	dongle;
+	pthread_mutex_t	heap;
+	pthread_mutex_t	state;
+	uint64_t		last_use;
+	t_coder			*waiters[2];
 }	t_dongle;
 
 typedef struct s_coder
 {
 	int				id;
-	pthread_t		cod_thread;
-	pthread_mutex_t	death_mutex;
+	pthread_t		coder_thread;
 	pthread_mutex_t	comp_mutex;
-	t_dongle		*left_dongle;
-	t_dongle		*right_dongle;
+	pthread_mutex_t	coder_mutex;
+	t_dongle		*left;
+	t_dongle		*right;
 	t_sim			*sim;
 	uint64_t		compile_start;
 	int				nb_compiles;
-	uint64_t		deadline;
 }	t_coder;
 
 typedef struct s_sim
@@ -101,14 +86,12 @@ typedef struct s_sim
 	uint64_t		cooldown;
 	t_enum_sched	policy;
 	bool			stop;
-	uint64_t		start_time;
+	bool			silence;
+	struct timeval	start_time;
 	pthread_mutex_t	sim_mutex;
 	pthread_mutex_t	stop_mutex;
 	pthread_mutex_t	print_mutex;
-	pthread_mutex_t	sched_mutex;
-	pthread_cond_t	sched_cond;
 	pthread_t		monitor;
-	t_heap			waiters;
 	t_coder			*coders;
 	t_dongle		*dongles;
 	int				finished_coders;
@@ -117,10 +100,8 @@ typedef struct s_sim
 
 // utils
 uint64_t		ft_atou(const char *nptr, bool *error);
-uint64_t		get_time_ms(void);
+uint64_t		get_time_ms(t_sim *sim);
 void			smart_sleep(uint64_t duration, t_sim *sim);
-uint64_t		get_next_seq(t_sim *sim);
-struct timespec	compute_next_wake(t_dongle *d);
 
 // time
 long long		get_time_in_usec(void);
@@ -141,16 +122,15 @@ bool			init_simulation(t_sim *sim);
 
 // coders
 void			*coder_routine(void *arg);
+bool			compile(t_coder *coder);
 bool			debug(t_coder *coder);
 bool			refactor(t_coder *coder);
 bool			can_compile(t_coder *coder);
 
 // dongles
-void			wait_dongle(t_coder *coder, t_dongle *dongle);
-bool			take_dongle(t_coder *coder, t_dongle *dongle, uint64_t policy);
-bool			reserve_dongles(t_coder *coder);
-void			release_dongles(t_coder *coder, bool rel_left, bool rel_right);
-void			wake_dongles(t_sim *sim);
+void			lock_dongles(t_coder *coder, t_sim *sim);
+void			unlock_dongles(t_coder *coder);
+void			check_edf(t_dongle *dongle, t_sim *sim);
 
 // cleanup
 void			join_coders(t_sim *sim);
@@ -163,11 +143,10 @@ void			print_dongles(t_sim *sim);
 bool			get_stop(t_sim *sim);
 int				get_nb_compiles(t_coder *coder);
 uint64_t		get_deadline(t_coder *coder);
-int				get_finished_coders(t_sim *sim);
-uint64_t		get_policy(t_coder *coder);
+bool			get_dongle_state(t_dongle *dongle, t_sim *sim);
 
 // setters
-void			set_stop(t_sim *sim, bool value);;
+void			set_stop(t_sim *sim, bool value);
 void			set_deadline(t_coder *coder, uint64_t deadline);
 void			set_nb_compiles(t_coder *coder, int value);
 void			set_finished_coder(t_sim *sim, int value);
@@ -181,18 +160,18 @@ void			simulation(t_sim *sim);
 
 // logs
 uint64_t		elapsed_time(t_sim *sim);
-void			print_status(t_coder *coder, char *str);
+void			print_status(t_coder *coder, char *str, bool burnout);
 
 // monitor
-bool			check_burnout(t_sim *sim, uint64_t time);
+bool			check_burnout(t_sim *sim);
 void			*monitor_routine(void *arg);
 
 // heap
-// static void	swap(t_request *a, t_request *b);
-void			heap_remove(t_heap *heap, int index);
-void			heap_push(t_heap *heap, t_request request);
-t_request		heap_pop(t_heap *heap);
-t_request		heap_peek(t_heap *heap);
-t_request		heap_pop_valid(t_heap *h);
+void			swap(t_dongle *dongle);
+void			heap_push(t_coder *coder, t_dongle *dongle);
+void			heap_pop(t_coder *coder, t_dongle *dongle);
+int				heap_peek(t_dongle *dongle);
+bool			scheduler(t_coder *coder, t_sim *sim);
+
 
 #endif
