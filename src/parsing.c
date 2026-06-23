@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/12 14:31:20 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/23 16:43:13 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,31 +59,34 @@ bool	valid_number(void *dest, char *str, size_t size)
 	return (true);
 }
 
-bool	valid_policy(char *str, t_sim *simulation)
+bool	valid_policy(char *str, t_sim *sim)
 {
 	if (!strcmp(str, "edf"))
-		simulation->policy = EDF;
+		sim->policy = EDF;
 	else if (!strcmp(str, "fifo"))
-		simulation->policy = FIFO;
+		sim->policy = FIFO;
 	else
 		return (print_error(ERROR_POLICY));
 	return (true);
 }
 
-bool	parser(char **av, t_sim *simulation)
+bool	parser(char **av, t_sim *sim)
 {
-	if (!valid_number(&simulation->nb_coders, av[1], sizeof(int))
-		||!valid_number(&simulation->time_to_burnout, av[2], sizeof(uint64_t))
-		||!valid_number(&simulation->time_to_compile, av[3], sizeof(uint64_t))
-		||!valid_number(&simulation->time_to_debug, av[4], sizeof(uint64_t))
-		||!valid_number(&simulation->time_to_refactor, av[5], sizeof(uint64_t))
-		||!valid_number(&simulation->nb_compiles, av[6], sizeof(int))
-		||!valid_number(&simulation->cooldown, av[7], sizeof(uint64_t))
-		||!valid_policy(av[8], simulation))
+	if (!valid_number(&sim->nb_coders, av[1], sizeof(int))
+		||!valid_number(&sim->time_to_burnout, av[2], sizeof(uint64_t))
+		||!valid_number(&sim->time_to_compile, av[3], sizeof(uint64_t))
+		||!valid_number(&sim->time_to_debug, av[4], sizeof(uint64_t))
+		||!valid_number(&sim->time_to_refactor, av[5], sizeof(uint64_t))
+		||!valid_number(&sim->nb_compiles, av[6], sizeof(int))
+		||!valid_number(&sim->cooldown, av[7], sizeof(uint64_t))
+		||!valid_policy(av[8], sim))
 		return (false);
-	if (simulation->nb_coders <= 0)
+	if (sim->nb_coders <= 0)
 		return (print_error(ERROR_NB_CODERS));
-	if (simulation->nb_compiles <= 0)
+	if (sim->nb_compiles <= 0)
 		return (print_error(ERROR_NB_COMPILES));
+	if (sim->time_to_compile < 1 || sim->time_to_debug < 1
+		|| sim->time_to_refactor < 1 || sim->cooldown < 1)
+		return (print_error(ERROR_INT_TOO_LOW));
 	return (true);
 }

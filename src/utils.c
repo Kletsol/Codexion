@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/17 10:21:35 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/23 10:57:39 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,52 +35,27 @@ uint64_t	ft_atou(const char *nptr, bool *error)
 	return (res);
 }
 
-uint64_t	get_time_ms(void)
+void	swap(t_dongle *dongle)
+{
+	t_coder	*temp;
+
+	temp = dongle->waiters[0];
+	dongle->waiters[0] = dongle->waiters[1];
+	dongle->waiters[1] = temp;
+}
+
+uint64_t	get_time_ms(t_sim *sim)
 {
 	struct timeval	tv;
+	uint64_t		p_sec;
+	uint64_t		p_usec;
+	uint64_t		s_sec;
+	uint64_t		s_usec;
 
 	gettimeofday(&tv, NULL);
-	return ((uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000);
+	p_sec = tv.tv_sec * 1000;
+	p_usec = tv.tv_usec / 1000;
+	s_sec = sim->start_time.tv_sec * 1000;
+	s_usec = sim->start_time.tv_usec / 1000;
+	return ((p_sec + p_usec) - (s_sec + s_usec));
 }
-
-void	smart_sleep(uint64_t duration, t_sim *sim)
-{
-	uint64_t	start;
-	uint64_t	time;
-
-	start = get_time_ms();
-	time = start;
-	while (time - start < duration && !get_stop(sim))
-	{
-		usleep(100);
-		time = get_time_ms();
-	}
-}
-
-struct timespec	compute_next_wake(t_dongle *d)
-{
-	uint64_t		now;
-	uint64_t		wake_ms;
-	struct timespec	ts;
-
-	now = get_time_ms();
-	wake_ms = now;
-	if (d->end_cooldown > now)
-		wake_ms = d->end_cooldown;
-	else
-		wake_ms = now;
-	ts.tv_sec = wake_ms / 1000;
-	ts.tv_nsec = (wake_ms % 1000) * 1000000;
-	return (ts);
-}
-// uint64_t	get_next_seq(t_sim *sim)
-// {
-// 	uint64_t	seq;
-
-// 	seq = 0;
-// 	pthread_mutex_lock(&sim->seq_mutex);
-// 	seq = sim->next_seq++;
-// 	pthread_mutex_unlock(&sim->seq_mutex);
-// 	return (seq);
-// }
-

@@ -6,37 +6,34 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/17 10:29:59 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/23 16:53:13 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-bool	check_burnout(t_sim *sim, uint64_t time)
+bool	check_burnout(t_sim *sim)
 {
-	int			i;
-	int			nb_compiles;
-	int			finished;
-	uint64_t	deadline;
+	int	i;
 
 	i = 0;
 	while (i < sim->nb_coders)
 	{
-		nb_compiles = get_nb_compiles(&sim->coders[i]);
-		deadline = get_deadline(&sim->coders[i]);
-		if (time > deadline && nb_compiles != sim->nb_compiles)
+		pthread_mutex_lock(&sim->coders[i].coder_mutex);
+		if (get_time_ms(sim) - sim->coders[i].compile_start
+			> sim->time_to_burnout)
 		{
-			set_stop(sim, true);
 			pthread_mutex_lock(&sim->print_mutex);
-			printf("%lu %d burned out\n", elapsed_time(sim), sim->coders[i].id);
+			sim->silence = true;
 			pthread_mutex_unlock(&sim->print_mutex);
-			return (true);
+			usleep(1000);
+			set_stop(sim);
+			print_status(&sim->coders[i], BURNOUT, true);
+			return (pthread_mutex_unlock(&sim->coders[i].coder_mutex), true);
 		}
+		pthread_mutex_unlock(&sim->coders[i].coder_mutex);
 		i++;
 	}
-	finished = get_finished_coders(sim);
-	if (sim->nb_coders == finished)
-		return (set_stop(sim, true), true);
 	return (false);
 }
 
@@ -47,19 +44,13 @@ void	*monitor_routine(void *arg)
 	sim = (t_sim *)arg;
 	while (!get_stop(sim))
 	{
-		pthread_mutex_lock(&sim->sched_mutex);
-		pthread_cond_broadcast(&sim->sched_cond);
-		pthread_mutex_unlock(&sim->sched_mutex);
-
-		if (check_burnout(sim, get_time_ms()))
-		{
-			pthread_mutex_lock(&sim->sched_mutex);
-			pthread_cond_broadcast(&sim->sched_cond);
-			pthread_mutex_unlock(&sim->sched_mutex);
-			return (NULL);
-		}
-
-		psleep(1000);
+		pthread_mutex_lock(&sim->stop_mutex);
+		if (sim->nb_coders != 1 && sim->finished_coders >= sim->nb_coders)
+			set_stop(sim);
+		pthread_mutex_unlock(&sim->stop_mutex);
+		if (check_burnout(sim))
+			break ;
+		usleep(1);
 	}
 	return (NULL);
 }

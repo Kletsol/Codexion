@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/17 10:08:51 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/23 16:16:48 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,39 +24,16 @@ bool	get_stop(t_sim *sim)
 	return (false);
 }
 
-int	get_nb_compiles(t_coder *coder)
+bool	get_dongle_state(t_dongle *dongle, t_sim *sim)
 {
-	int	result;
+	bool	available;
 
-	pthread_mutex_lock(&coder->comp_mutex);
-	result = coder->nb_compiles;
-	pthread_mutex_unlock(&coder->comp_mutex);
-	return (result);
-}
-
-uint64_t	get_deadline(t_coder *coder)
-{
-	uint64_t	result;
-
-	pthread_mutex_lock(&coder->death_mutex);
-	result = coder->deadline;
-	pthread_mutex_unlock(&coder->death_mutex);
-	return (result);
-}
-
-int	get_finished_coders(t_sim *sim)
-{
-	int	result;
-
-	pthread_mutex_lock(&sim->stop_mutex);
-	result = sim->finished_coders;
-	pthread_mutex_unlock(&sim->stop_mutex);
-	return (result);
-}
-
-uint64_t	get_policy(t_coder *coder)
-{
-	if (coder->sim->policy)
-		return (get_deadline(coder));
-	return (get_time_ms());
+	pthread_mutex_lock(&dongle->state);
+	if (dongle->last_use == 0
+		|| get_time_ms(sim) - dongle->last_use >= sim->cooldown)
+		available = false;
+	else
+		available = true;
+	pthread_mutex_unlock(&dongle->state);
+	return (available);
 }

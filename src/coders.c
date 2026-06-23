@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/20 12:13:54 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/23 17:12:58 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,32 +14,53 @@
 
 void	*coder_routine(void *arg)
 {
-	t_coder	*coder;
-	int		compiles;
+	t_coder		*coder;
+	uint16_t	compiles;
 
 	coder = (t_coder *)arg;
-	set_deadline(coder, get_time_ms() + coder->sim->time_to_burnout);
-	compiles = get_nb_compiles(coder);
-	while (compiles < coder->sim->nb_compiles)
+	compiles = 0;
+	if (coder->sim->nb_coders == 1)
+		usleep(coder->sim->time_to_burnout * 1000 * 4);
+	if (coder->id % 2 == 0)
+		usleep((coder->sim->time_to_compile) * 1000);
+	while (!get_stop(coder->sim))
 	{
-		if (!can_compile(coder))
+		if (!compile(coder))
 			return (NULL);
-		set_nb_compiles(coder, ++compiles);
+		if (++compiles == coder->sim->nb_compiles)
+		{
+			pthread_mutex_lock(&coder->sim->stop_mutex);
+			coder->sim->finished_coders += 1;
+			pthread_mutex_unlock(&coder->sim->stop_mutex);
+		}
 		if (!debug(coder))
 			return (NULL);
 		if (!refactor(coder))
 			return (NULL);
 	}
-	set_finished_coder(coder->sim, 1);
 	return (NULL);
+}
+
+bool	compile(t_coder *coder)
+{
+	if (get_stop(coder->sim))
+		return (false);
+	lock_dongles(coder, coder->sim);
+	print_status(coder, COMPILE, false);
+	pthread_mutex_lock(&coder->coder_mutex);
+	coder->compile_start = get_time_ms(coder->sim);
+	pthread_mutex_unlock(&coder->coder_mutex);
+	usleep(coder->sim->time_to_compile * 1000);
+	unlock_dongles(coder);
+	return (true);
 }
 
 bool	debug(t_coder *coder)
 {
 	if (get_stop(coder->sim))
 		return (false);
-	print_status(coder, "is debugging");
-	smart_sleep(coder->sim->time_to_debug, coder->sim);
+	print_status(coder, DEBUG, false);
+	usleep(coder->sim->time_to_debug * 1000);
 	return (true);
 }
 
@@ -47,23 +68,7 @@ bool	refactor(t_coder *coder)
 {
 	if (get_stop(coder->sim))
 		return (false);
-	print_status(coder, "is refactoring");
-	smart_sleep(coder->sim->time_to_refactor, coder->sim);
-	return (true);
-}
-
-bool	can_compile(t_coder *coder)
-{
-	if (get_stop(coder->sim))
-		return (false);
-	if (!reserve_dongles(coder))
-		return (false);
-	pthread_mutex_lock(&coder->death_mutex);
-	coder->compile_start = get_time_ms();
-	pthread_mutex_unlock(&coder->death_mutex);
-	set_deadline(coder, coder->compile_start + coder->sim->time_to_burnout);
-	print_status(coder, "is compiling");
-	smart_sleep(coder->sim->time_to_compile, coder->sim);
-	release_dongles(coder, true, true);
+	print_status(coder, REFACTOR, false);
+	usleep(coder->sim->time_to_refactor * 1000);
 	return (true);
 }
