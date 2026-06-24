@@ -7,17 +7,66 @@
 ## 📝 Description
 </span>
 
+Codexion is a project written in C and based on the use of threads, in the<br>
+form of a dining philosophers problem with a few subtleties.
+
+Instead of philosophers and meals, we are dealing with coders and dongles,<br>
+spread out in a circle, one dongle between each coder. Each coder can<br>
+therefore take two dongles, one on his left and one on his right and, once<br>
+he holds both of them, perform the following actions :
+
+- Compile
+- Debug
+- Refactor
+
+When a coder finishes compiling, he puts both dongles back on the table so<br>
+his neighbors can use them. Then, he starts debugging. Once debugging is<br>
+done, he starts refactoring. Finally, he can try to compile again.
+
+If multiple coders request the same dongle, the dongle grants access<br>
+according to the selected scheduler :
+
+- 'fifo' serves requests in arrival order : First In, First Out.
+- 'edf' serves the coder with the Earliest Deadline First.
+
+If a coder did not start compiling within a given time since the beginning<br>
+of their last compile or the beginning of the simulation, they burn out<br>
+and the simulation stops immediately.
+
+Otherwise, the simulation goes on until every coder compiled at least a<br>
+given nuber of times.
 
 <span style="color:turquoise">
 
 ## 🖥️ Instructions
 </span>
 
-
 <span style="color:lightblue">
 
 ### ⤵️ Input
 </span>
+
+As you may have seen in the description, this program take a little bit <br>
+more arguments than a classic philosophers :
+
+|Arg|Type|Description|
+|---|---|---|
+|number_of_coders|Int|The number of coders and also the number of dongles|
+|time_to_burnout|uint64_t|The time until a coder that doesn't compile burns out|
+|time_to_compile|uint64_t|The time it take for a coder to compile|
+|time_to_debug|uint64_t|The time a coder will spend debugging|
+|time_to_refactor|uint64_t|The time a coder will spend refactoring|
+|number_of_compiles|int|The number of compiles required for each coder|
+|dongle_cooldown|uint64_t|The duration for which a dongle is unusable after compilation|
+|scheduler|str|The chosen arbitration policy used by dongles : "fifo" or "edf"|
+
+Execute the command :
+
+	make
+
+to compile, then follow this model :
+
+	./codexion <number_of_coders> <time_to_burnout> <time_to_compile> <time_to_debug> <time_to_refactor> <number_of_compiles> <dongle_cooldown> <scheduler>
 
 
 <span style="color:lightblue">
@@ -25,12 +74,43 @@
 ### ⤴️ Output
 </span>
 
+The output appears directly on the terminal after execution, and depends on<br>
+the arguments given. Each line of the output has a very precise form :
+
+	<time> <coder_id> <action>
+
+With :
+
+- time : the time elapsed since start, in milliseconds
+- coder_id : a number between 1 and number_of_coders
+- action : the action performed by the coder
+
+Example :
+
+	400 4 has taken a dongle
+	400 4 has taken a dongle
+	400 4 is compiling
+	400 5 is refactoring
+
+These lines can then be interpreted with the arguments given at the start.
 
 <span style="color:turquoise">
 
 ## 📚 Resources
 </span>
 
+Here are some useful links I used to better understand how threads work and<br>
+how to use it :
+
+https://tala-informatique.fr/index.php?title=C_pthread
+
+https://github.com/KeroBeros68/Obsidian-vault/tree/main/c/pthread
+
+https://franckh.developpez.com/tutoriels/posix/pthreads/
+
+AI was used mainly for debugging when I couldn't figure out myself where<br>
+the problem was. This mainly concerned data race issues, as helgrind reports<br>
+both EXISTING and POTENTIAL data races.
 
 <span style="color:turquoise">
 
@@ -39,88 +119,44 @@
 
 ### -> Blocking cases handled
 
+First, the project you are currently reviewing is the fifth version of Codexion<br>
+I had to create in order to finally get a working program in all aspects.<br>
+While working on the previous versions, I encountered several issues such as :
+
+- Helgrind warnings (not errors, but still),
+- Unexpected starvation,
+- Waiting conditions (pthread_cond_wait or timedwait) not resolving,
+- Structures too dense, too many mutexes everywhere, difficult to debug.
+
+This fifth version is intended to be simpler, with less intricate structures,<br>
+threads and mutexes.
+
+On the other hand, I've never had too many problems with Valgrind and memory<br>
+leaks, as I designed the initialization from the start in such a way that I<br>
+could clean everything up properly at the end.
+
+Note that, having struggled with that for three whole versions, this version<br>
+does not use pthread_cond in any way, and simply relies on while loops.
+
 ### -> Thread synchronization mechanisms
 
+My implementation only uses threads in two ways : one for each coder, and one<br>
+for the monitor.
 
+Each coder also has an associated mutex that's used every time the program<br>
+needs to access data from the coder, to prevent data races between threads.
 
+Each dongle has three mutexes protecting the access to the dongle itself, to<br>
+its heap, and to it's state (either taken or available).
 
--g3 -fsanitize=thread
+Finally, the simulation itself has three mutexes protecting simulation shutdown,<br>
+printing function and access to any process likely to cause a shutdown like<br>
+burnout or finished coders.
 
+On top of that, the monitor manages the whole simulation, checking regularly<br>
+for burnout and verifying the number of finished coders, shutting down the<br>
+simulation if either of these occurs.
 
-J'ai un projet en c dont le but est de travailler sur les pthread et tout ce qui va avec (mutex...)
-Sujet resume :
-'
-Codexion is a concurrent programming project implementing a variation of the classic Dining Philosophers problem, adapted to a coding environment.
-
-N coders sit in a circle around a shared Quantum Compiler. Each coder alternates between three activities: compiling, debugging, and refactoring. Compiling requires holding two USB dongles simultaneously (left and right). There are as many dongles as coders, one between each adjacent pair.
-
-A coder burns out if they fail to start a new compilation within time_to_burnout milliseconds since their last compile (or the start of the simulation). The goal is to keep every coder alive long enough for all of them to complete the required number of compilations.
-
-Each coder runs as an independent POSIX thread. A dedicated monitor thread polls the simulation state every 100 µs and detects burnout within the 10 ms precision constraint imposed by the subject.'
-
-Arguments acceptes par le programme :
-'
-number_of_coders: The number of coders and also the number of dongles.
-◦ time_to_burnout (in milliseconds): If a coder did not start compiling within
-time_to_burnout milliseconds since the beginning of their last compile or the
-beginning of the simulation, they burn out.
-◦ time_to_compile (in milliseconds): The time it takes for a coder to compile.
-During that time, they must hold two dongles.
-◦ time_to_debug (in milliseconds): The time a coder will spend debugging.
-◦ time_to_refactor (in milliseconds): The time a coder will spend refactoring.
-After completing the refactoring phase, the coder will immediately attempt to
-acquire dongles and start compiling again.
-◦ number_of_compiles_required: If all coders have compiled at least this
-many times, the simulation stops. Otherwise, it stops when a coder burns
-out.
-◦ dongle_cooldown (in milliseconds): After being released, a dongle is unavail-
-able until its cooldown has passed.
-◦ scheduler: The arbitration policy used by dongles to decide who gets them
-when multiple coders request them.
-The value must be exactly one of: fifo or edf.
-fifo means First In, First Out: the dongle is granted to the coder whose
-request arrived first.
-edf means Earliest Deadline First with deadline = last_compile_start +
-time_to_burnout
-'
-Quelques regles en plus :
-'
-The specific rules for the mandatory part are:
-• Each coder must be represented by a thread (using pthread_create).
-• There is one dongle between each pair of coders. Therefore, if there are several
-coders, each coder has a dongle on their left side and a dongle on their right side.
-If there is only one coder, there should be only one dongle on the table.
-• To prevent coders from duplicating dongles, you must protect each dongle’s state
-with a mutex (pthread_mutex_t). A condition variable (pthread_cond_t) may be
-used to manage waiting queues.
-• Dongle cooldown is mandatory: after a coder releases a dongle, the dongle
-cannot be taken again until dongle_cooldown milliseconds have elapsed.
-• Fair arbitration is mandatory: when multiple coders request the same dongle,
-11
-Codexion Master the race for resources before the deadline masters you
-the dongle must grant access according to scheduler.
-With fifo, serve requests in arrival order.
-With edf, serve the coder with the earliest burnout deadline (i.e., last_compile_start
-+ time_to_burnout).
-• The program must guarantee liveness: coders should not starve under edf schedul-
-ing, provided the parameters are feasible.
-• A separate monitor thread must detect burnout precisely and stop the simulation.
-The burnout log must be printed within 10 ms of the actual burnout time.
-• Logging must be serialized so that two messages never interleave on a single line
-(use a mutex to protect output).
-• The simulation stops either when a coder burns out or when every coder has com-
-piled at least number_of_compiles_required times.
-• Your code must compile with -Wall -Wextra -Werror -pthread.
-• You must implement a priority queue (heap) for FIFO/EDF scheduling (no stan-
-dard library priority queue may be used).
-• All memory must be properly allocated and freed (no memory leaks).
-'
-
-
-
-
-
-
-
-
-Gerer le cas de compiles_required = 1;
+The correct usage of dedicated functions with dedicated mutexes (e.g. getters<br>
+and setters) prevents any data race to happen, as well as other issues like<br>
+messages interleaving on a single line.

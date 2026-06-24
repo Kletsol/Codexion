@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/23 10:57:39 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/24 12:37:03 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,15 +47,15 @@ void	swap(t_dongle *dongle)
 uint64_t	get_time_ms(t_sim *sim)
 {
 	struct timeval	tv;
-	uint64_t		p_sec;
-	uint64_t		p_usec;
-	uint64_t		s_sec;
-	uint64_t		s_usec;
+	uint64_t		curr_sec;
+	uint64_t		curr_usec;
+	uint64_t		start_sec;
+	uint64_t		start_usec;
 
 	gettimeofday(&tv, NULL);
-	p_sec = tv.tv_sec * 1000;
-	p_usec = tv.tv_usec / 1000;
-	s_sec = sim->start_time.tv_sec * 1000;
-	s_usec = sim->start_time.tv_usec / 1000;
-	return ((p_sec + p_usec) - (s_sec + s_usec));
+	curr_sec = tv.tv_sec * 1000;
+	curr_usec = tv.tv_usec / 1000;
+	start_sec = sim->start_time.tv_sec * 1000;
+	start_usec = sim->start_time.tv_usec / 1000;
+	return ((curr_sec + curr_usec) - (start_sec + start_usec));
 }

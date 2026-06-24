@@ -6,7 +6,7 @@
 /*   By: lbonnet <lbonnet@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/03 15:04:07 by lbonnet           #+#    #+#             */
-/*   Updated: 2026/06/23 15:07:04 by lbonnet          ###   ########.fr       */
+/*   Updated: 2026/06/24 12:34:30 by lbonnet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,6 +153,6 @@ void			heap_push(t_coder *coder, t_dongle *dongle);
 void			heap_pop(t_coder *coder, t_dongle *dongle);
 int				heap_peek(t_dongle *dongle);
 bool			scheduler(t_coder *coder, t_sim *sim);
-void			check_edf(t_dongle *dongle, t_sim *sim);
+void			resolve_edf(t_dongle *dongle, t_sim *sim);
 
 #endif
